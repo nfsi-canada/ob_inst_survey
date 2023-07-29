@@ -1,0 +1,41 @@
+"""
+Simulates an NMEA stream from a previously saved NMEA text file.
+"""
+from datetime import datetime, timedelta
+import queue as qu
+import re
+from threading import Thread
+
+
+def replay_textfile(filename: str, nmea_q: qu.Queue, timestamp_start: datetime = None):
+    """Initiate a queue simulating an NMEA data stream from a text file."""
+    Thread(
+        target=__nmea_from_file, args=(filename, nmea_q, timestamp_start), daemon=True
+    ).start()
+
+
+def __nmea_from_file(filename: str, nmea_q: qu.Queue, timestamp_start: datetime = None):
+    timestamp_prev = timestamp_start
+    timestamp_days = timedelta(days=0)
+    actltime_start = datetime.now()
+    with open(filename, encoding="utf-8") as nmea_file:
+        for sentence in nmea_file:
+            sentence = re.sub(r"^.*\$", "$", sentence.strip())
+            nmea_items = sentence.split(sep=",")
+            if re.match(r"\d{6}\.\d{2,4}", nmea_items[1]):
+                timestamp_curr = datetime.strptime(nmea_items[1], "%H%M%S.%f")
+                if not timestamp_start:
+                    timestamp_start = timestamp_curr
+                    timestamp_prev = timestamp_start
+                if timestamp_curr.hour < timestamp_prev.hour:
+                    timestamp_days = timestamp_days + timedelta(days=1)
+                timestamp_prev = timestamp_curr
+                timestamp_diff = timestamp_curr + timestamp_days - timestamp_start
+                while True:
+                    # Pause until time for next NMEA sentence
+                    actltime_diff = datetime.now() - actltime_start
+                    if actltime_diff >= timestamp_diff:
+                        break
+            nmea_q.put(sentence)
+
+    nmea_q.put("EOF")

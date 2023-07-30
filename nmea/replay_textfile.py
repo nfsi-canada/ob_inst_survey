@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import queue as qu
 import re
 from threading import Thread
+from time import sleep
 
 
 def replay_textfile(
@@ -45,6 +46,7 @@ def __nmea_from_file(
                 timestamp_diff = timestamp_curr + timestamp_days - timestamp_start
                 while True:
                     # Pause until time for next NMEA sentence
+                    sleep(0.001)  # Prevents idle loop from 100% CPU thread usage.
                     actltime_diff = (datetime.now() - actltime_start) * spd_fctr
                     if actltime_diff >= timestamp_diff:
                         break

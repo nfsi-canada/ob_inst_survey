@@ -50,4 +50,4 @@ def __nmea_from_file(
                         break
             nmea_q.put(sentence)
 
-    nmea_q.put("*** End of File ***")
+    nmea_q.put("EOF")

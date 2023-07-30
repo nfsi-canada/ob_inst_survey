@@ -89,11 +89,13 @@ def __receive_tcp(tcp_conn: IpParam, nmea_q: qu.Queue):
                 except (ConnectionRefusedError, ConnectionAbortedError):
                     if not conn_rfsd_notified:
                         print(
-                            f"TCP server {tcp_conn.addr}:{tcp_conn.port} is not "
+                            f"*** TCP server {tcp_conn.addr}:{tcp_conn.port} is not "
                             f"currently providing a connection. Waiting..."
                         )
                         conn_rfsd_notified = True
-            print(f"Connected to TCP server at " f"{tcp_conn.addr}:{tcp_conn.port}.")
+            print(
+                f"*** Connected to TCP server at " f"{tcp_conn.addr}:{tcp_conn.port}."
+            )
 
             # Listen for incomming data stream
             while True:
@@ -104,7 +106,7 @@ def __receive_tcp(tcp_conn: IpParam, nmea_q: qu.Queue):
                         nmea_q.put(line)
                 else:
                     print(
-                        f"*** DISCONNECTED from TCP server "
+                        f"*** DISCONNECTED from TCP server."
                         f"{tcp_conn.addr}:{tcp_conn.port}."
                     )
                     break

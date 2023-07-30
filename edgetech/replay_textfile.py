@@ -32,7 +32,7 @@ def __etech_from_file(
     actltime_start = datetime.now()
     with open(filename, encoding="utf-8") as etech_file:
         for sentence in etech_file:
-            sentence = re.sub(r"(\d{2}) (\d{2})", "\g<1>T\g<2>", sentence.strip())
+            sentence = re.sub(r"(\d{2}) (\d{2})", r"\g<1>T\g<2>", sentence.strip())
             sentence = re.sub(r": b'", " ", sentence)
             sentence = re.sub(r"\\r\\n'", "", sentence)
             timestamp_curr = datetime.strptime(sentence[0:26], "%Y-%m-%dT%H:%M:%S.%f")

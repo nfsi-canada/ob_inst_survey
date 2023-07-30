@@ -36,7 +36,7 @@ class IpParam:
             raise ValueError(f"{self.addr} is not a valid IP address.")
 
 
-def ip_stream(ip_conn: IpParam, nmea_q: qu.Queue):
+def ip_stream(ip_conn: IpParam, nmea_q: qu.Queue[str]):
     """Initiate a queue receiving an NMEA data stream."""
     if ip_conn.prot == "udp":
         Thread(target=__receive_udp, args=(ip_conn, nmea_q), daemon=True).start()
@@ -44,7 +44,7 @@ def ip_stream(ip_conn: IpParam, nmea_q: qu.Queue):
         Thread(target=__receive_tcp, args=(ip_conn, nmea_q), daemon=True).start()
 
 
-def __receive_udp(udp_conn: IpParam, nmea_q: qu.Queue):
+def __receive_udp(udp_conn: IpParam, nmea_q: qu.Queue[str]):
     """Listen on UDP port and populate queue with NMEA stream."""
     with socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM) as nmea_server:
         nmea_server.bind((udp_conn.addr, udp_conn.port))
@@ -62,7 +62,7 @@ def __receive_udp(udp_conn: IpParam, nmea_q: qu.Queue):
                     nmea_q.put(line)
 
 
-def __receive_tcp(tcp_conn: IpParam, nmea_q: qu.Queue):
+def __receive_tcp(tcp_conn: IpParam, nmea_q: qu.Queue[str]):
     """
     Connect to TCP server and populate nmea_q with NMEA sentences.
     If a TCP timeout error it will populate nmea_q with str "TimeoutError".

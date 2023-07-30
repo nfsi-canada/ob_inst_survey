@@ -9,7 +9,7 @@ from threading import Thread
 
 def replay_textfile(
     filename: str,
-    nmea_q: qu.Queue,
+    nmea_q: qu.Queue[str],
     timestamp_start: datetime = None,
     spd_fctr: int = 1,
 ):
@@ -23,7 +23,7 @@ def replay_textfile(
 
 def __nmea_from_file(
     filename: str,
-    nmea_q: qu.Queue,
+    nmea_q: qu.Queue[str],
     timestamp_start: datetime,
     spd_fctr: int,
 ):

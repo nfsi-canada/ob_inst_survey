@@ -11,7 +11,7 @@ import nmea
 
 def main():
     """Main function."""
-    nmea_q = qu.Queue()
+    nmea_q: qu.Queue[str] = qu.Queue()
 
     # ip_conn = nmea.IpParam(port=50001, addr="192.168.1.131")  # Defaults to UDP
     # Valid UPD addresses:

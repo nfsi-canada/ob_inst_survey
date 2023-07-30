@@ -7,14 +7,26 @@ import re
 from threading import Thread
 
 
-def replay_textfile(filename: str, nmea_q: qu.Queue, timestamp_start: datetime = None):
+def replay_textfile(
+    filename: str,
+    nmea_q: qu.Queue,
+    timestamp_start: datetime = None,
+    spd_fctr: int = 1,
+):
     """Initiate a queue simulating an NMEA data stream from a text file."""
     Thread(
-        target=__nmea_from_file, args=(filename, nmea_q, timestamp_start), daemon=True
+        target=__nmea_from_file,
+        args=(filename, nmea_q, timestamp_start, spd_fctr),
+        daemon=True,
     ).start()
 
 
-def __nmea_from_file(filename: str, nmea_q: qu.Queue, timestamp_start: datetime = None):
+def __nmea_from_file(
+    filename: str,
+    nmea_q: qu.Queue,
+    timestamp_start: datetime,
+    spd_fctr: int,
+):
     timestamp_prev = timestamp_start
     timestamp_days = timedelta(days=0)
     actltime_start = datetime.now()
@@ -33,9 +45,9 @@ def __nmea_from_file(filename: str, nmea_q: qu.Queue, timestamp_start: datetime 
                 timestamp_diff = timestamp_curr + timestamp_days - timestamp_start
                 while True:
                     # Pause until time for next NMEA sentence
-                    actltime_diff = datetime.now() - actltime_start
+                    actltime_diff = (datetime.now() - actltime_start) * spd_fctr
                     if actltime_diff >= timestamp_diff:
                         break
             nmea_q.put(sentence)
 
-    nmea_q.put("EOF")
+    nmea_q.put("*** End of File ***")

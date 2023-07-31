@@ -36,6 +36,7 @@ def main():
 
     try:
         while True:
+            sleep(0.001)  # Prevents idle loop from 100% CPU thread usage.
             process_next_nmea_sentence(nmea_q)
             process_next_edgetech_sentence(edgetech_q)
     except KeyboardInterrupt:
@@ -45,7 +46,6 @@ def main():
 def process_next_nmea_sentence(nmea_q: qu.Queue):
     """Get next element from NMEA queue and process as NMEA sentence."""
     if nmea_q.empty():
-        sleep(0.001)  # Prevents idle loop from 100% CPU thread usage.
         return
     nmea_str = nmea_q.get(block=False)
     if nmea_str in ["TimeoutError", "EOF"]:
@@ -61,7 +61,6 @@ def process_next_nmea_sentence(nmea_q: qu.Queue):
 def process_next_edgetech_sentence(edgetech_q: qu.Queue):
     """Get next element from queue and process as edgetech sentence."""
     if edgetech_q.empty():
-        sleep(0.001)  # Prevents idle loop from 100% CPU thread usage.
         return
     edgetech_str = edgetech_q.get(block=False)
     if edgetech_str in ["TimeoutError", "EOF"]:

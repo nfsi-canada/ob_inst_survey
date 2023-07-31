@@ -1,0 +1,61 @@
+"""
+Log NMEA stream to a text file.
+"""
+from datetime import datetime
+from pathlib import Path
+import queue as qu
+import sys
+from time import sleep
+
+import nmea
+
+TIMESTAMP_START = datetime.now().strftime("%Y-%m-%d_%H-%M")
+NMEA_FILEPREFIX = "NMEA"
+NMEA_PATH = Path("./logs/nmea/")
+NMEA_FILENAME = NMEA_PATH / f"{NMEA_FILEPREFIX}_{TIMESTAMP_START}.txt"
+
+
+def main(ip_conn=nmea.IpParam):
+    """
+    Initialise NMEA data stream and log to text file.
+    """
+    NMEA_PATH.mkdir(parents=True, exist_ok=True)
+    print(f"Logging to {NMEA_FILENAME}")
+
+    ip_conn = nmea.IpParam(port=50000, addr="192.168.1.107", prot="TCP")
+    ip_conn = nmea.IpParam(port=50001, addr="127.0.0.1", prot="UDP")
+
+    nmea_q: qu.Queue[str] = qu.Queue()
+    nmea.ip_stream(ip_conn, nmea_q)
+
+    try:
+        while True:
+            sleep(0.001)  # Prevents idle loop from 100% CPU thread usage.
+            sentence = get_next_sentence(nmea_q)
+            if not sentence:
+                continue
+            with open(NMEA_FILENAME, "a+", newline="", encoding="utf-8") as nmea_file:
+                nmea_file.write(f"{sentence}\n")
+                print(sentence)
+
+    except KeyboardInterrupt:
+        sys.exit("*** End Survey ***")
+
+
+def get_next_sentence(nmea_q: qu.Queue) -> str:
+    """Return next sentence from NMEA queue."""
+    if nmea_q.empty():
+        return None
+    nmea_str = nmea_q.get(block=False)
+    if nmea_str in ["TimeoutError", "EOF"]:
+        sys.exit(f"*** {nmea_str} ***")
+    if not nmea.checksum(nmea_str):
+        print(
+            f"!!! Checksum for NMEA line is invalid. Line has "
+            f"been ignored: => {nmea_str}"
+        )
+    return nmea_str
+
+
+if __name__ == "__main__":
+    main()

@@ -1,3 +1,4 @@
+/logs
 /data
 /tcp_client.py
 /udp_server.py

@@ -12,9 +12,18 @@ from threading import Thread
 
 @dataclass
 class IpParam:
-    """Dataclass for specifying IP connection parameters."""
+    """
+    Dataclass for specifying IP connection parameters.
+    For TCP the IP address is the remote server
+    For UDP the IP address is a/the valid local host address (ie one of):
+      "0.0.0.0"
+      "127.0.0.1"
+      socket.gethostbyname(socket.gethostname())
+      If more than one local NIC then the IP address of the actual NIC to be
+      used for receieving UDP stream is required.
+    """
 
-    port: int
+    port: int = 50001
     addr: str = "127.0.0.1"  # local for UDP / remote for TCP
     prot: str = "UDP"
     buffer: int = 2048

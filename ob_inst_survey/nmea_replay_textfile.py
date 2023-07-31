@@ -8,7 +8,7 @@ from threading import Thread
 from time import sleep
 
 
-def replay_textfile(
+def nmea_replay_textfile(
     filename: str,
     nmea_q: qu.Queue[str],
     timestamp_start: datetime = None,

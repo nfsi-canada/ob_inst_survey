@@ -4,7 +4,7 @@ Verify checksum for an NMEA secntence.
 import re
 
 
-def checksum(sentence: str) -> bool:
+def nmea_checksum(sentence: str) -> bool:
     """Returns True if NMEA sentence checksum is valid, otherwise False."""
     sentence_match = re.match(r"\$(.*)\*(.{2})", sentence)
     chksumdata = sentence_match[1]

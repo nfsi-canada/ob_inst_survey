@@ -45,7 +45,7 @@ class IpParam:
             raise ValueError(f"{self.addr} is not a valid IP address.")
 
 
-def ip_stream(ip_conn: IpParam, nmea_q: qu.Queue[str]):
+def nmea_ip_stream(ip_conn: IpParam, nmea_q: qu.Queue[str]):
     """Initiate a queue receiving an NMEA data stream."""
     if ip_conn.prot == "udp":
         Thread(target=__receive_udp, args=(ip_conn, nmea_q), daemon=True).start()

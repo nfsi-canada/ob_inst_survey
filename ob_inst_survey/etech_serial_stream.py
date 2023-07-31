@@ -25,7 +25,7 @@ class SerParam:
     snd_spd: int = 1500  # Speed of sound in water (typical 1450 to 1570 m/sec)
 
 
-def serial_stream(ser_conn: SerParam, edgetech_q: qu.Queue[str]):
+def etech_serial_stream(ser_conn: SerParam, edgetech_q: qu.Queue[str]):
     """Initiate a queue receiving an EdgeTech deckbox data stream."""
     Thread(target=__receive_serial, args=(ser_conn, edgetech_q), daemon=True).start()
 

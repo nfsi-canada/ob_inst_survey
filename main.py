@@ -1,13 +1,12 @@
 """
-Main script for testing nmea package
+Main script for testing ob_inst_survey package
 """
 from datetime import datetime
 import queue as qu
 import sys
 from time import sleep
 
-import edgetech as et
-import nmea
+import ob_inst_survey as obsurv
 
 
 def main():
@@ -17,22 +16,22 @@ def main():
 
     nmea_q: qu.Queue[str] = qu.Queue()
 
-    # ip_conn = nmea.IpParam(port=50001, addr="192.168.1.131")  # Defaults to UDP
+    # ip_conn = obsurv.IpParam(port=50001, addr="192.168.1.131")  # Defaults to UDP
     # Valid UPD addresses:
     #   socket.gethostbyname(socket.gethostname())
     #   "0.0.0.0",
     #   "127.0.0.1",
     #   "192.168.1.133",
-    ip_conn = nmea.IpParam(port=50000, addr="192.168.1.107", prot="TCP")
+    ip_conn = obsurv.IpParam(port=50000, addr="192.168.1.107", prot="TCP")
 
-    # nmea.ip_stream(ip_conn, nmea_q)
+    # obsurv.nmea_ip_stream(ip_conn, nmea_q)
 
     nmea_filename = "./data/nmea/POSMV_2023-04-14_13-26.txt"
-    # nmea.replay_textfile(nmea_filename, nmea_q, timestamp_start, 10)
+    # obsurv.nmea_replay_textfile(nmea_filename, nmea_q, timestamp_start, 10)
 
     edgetech_q: qu.Queue[str] = qu.Queue()
     et_filename = "./data/logs_TAN2301/raw/raw_edgetech_2023-01-06_09-58.txt"
-    et.replay_textfile(et_filename, edgetech_q, timestamp_start, 100)
+    obsurv.etech_replay_textfile(et_filename, edgetech_q, timestamp_start, 100)
 
     try:
         while True:
@@ -50,7 +49,7 @@ def process_next_nmea_sentence(nmea_q: qu.Queue):
     nmea_str = nmea_q.get(block=False)
     if nmea_str in ["TimeoutError", "EOF"]:
         sys.exit(f"*** {nmea_str} ***")
-    if not nmea.checksum(nmea_str):
+    if not obsurv.nmea_checksum(nmea_str):
         print(
             f"!!! Checksum for NMEA line is invalid. Line has "
             f"been ignored: => {nmea_str}"

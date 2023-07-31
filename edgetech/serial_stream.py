@@ -9,6 +9,8 @@ from threading import Thread
 
 from serial import Serial
 
+SER_TIMEOUT = 0.05
+
 
 @dataclass
 class SerParam:
@@ -35,7 +37,7 @@ def __receive_serial(ser_conn: SerParam, edgetech_q: qu.Queue[str]):
         parity=ser_conn.parity,
         stopbits=ser_conn.stop,
         bytesize=ser_conn.bytesize,
-        timeout=0.05,
+        timeout=SER_TIMEOUT,
     ) as ser:
         print("Connected to EgeTech deckbox: " + ser.portstr)
 
@@ -69,3 +71,26 @@ def get_response(ser) -> (str, str):
     flag = b"T"
     response = b"".join(response)
     return response, flag
+
+
+def send_command(ser_conn: SerParam, command: str) -> (str, str):
+    """
+    Send a serial command to 8011M deckbox and return tuple containing two
+    strings (reponse, status flag)
+    "*" indicates success
+    "#" indicates error
+    "T" indicates timeout
+    """
+    with Serial(
+        port=ser_conn.port,
+        baudrate=ser_conn.baud,
+        parity=ser_conn.parity,
+        stopbits=ser_conn.stop,
+        bytesize=ser_conn.bytesize,
+        timeout=SER_TIMEOUT,
+    ) as ser:
+        print("Connected to EgeTech deckbox: " + ser.portstr)
+        ser.write(command)
+        print(f"Sent command: {command}")
+
+        return get_response(ser)

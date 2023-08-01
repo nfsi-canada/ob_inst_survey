@@ -29,6 +29,9 @@ def main():
     nmea_filename = "./data/nmea/POSMV_2023-04-14_13-26.txt"
     # obsurv.nmea_replay_textfile(nmea_filename, nmea_q, timestamp_start, 10)
 
+    turn_time: float = 12.5  # Delay in ms for reply from BPR transducer.
+    snd_spd: int = 1500  # Speed of sound in water (typical 1450 to 1570 m/sec)
+
     edgetech_q: qu.Queue[str] = qu.Queue()
     et_filename = "./data/logs_TAN2301/raw/raw_edgetech_2023-01-06_09-58.txt"
     obsurv.etech_replay_textfile(et_filename, edgetech_q, timestamp_start, 100)

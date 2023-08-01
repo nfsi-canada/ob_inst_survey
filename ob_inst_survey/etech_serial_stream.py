@@ -9,20 +9,16 @@ from threading import Thread
 
 from serial import Serial
 
-SER_TIMEOUT = 0.05
-
 
 @dataclass
 class SerParam:
     """Dataclass for specifying serial connection parameters."""
-
     port: str = "COM2"
     baud: int = 9600
     stop: int = 1
     parity: str = "N"
     bytesize: int = 8
-    turn_time: float = 12.5  # Delay in ms for reply from BPR transducer.
-    snd_spd: int = 1500  # Speed of sound in water (typical 1450 to 1570 m/sec)
+    timeout: float = 0.05
 
 
 def etech_serial_stream(ser_conn: SerParam, edgetech_q: qu.Queue[str]):
@@ -37,9 +33,9 @@ def __receive_serial(ser_conn: SerParam, edgetech_q: qu.Queue[str]):
         parity=ser_conn.parity,
         stopbits=ser_conn.stop,
         bytesize=ser_conn.bytesize,
-        timeout=SER_TIMEOUT,
+        timeout=ser_conn.timeout,
     ) as ser:
-        print("Connected to EgeTech deckbox: " + ser.portstr)
+        print(f"Connected to EgeTech deckbox: {ser.portstr} at {ser.baudrate} baud.")
 
         while True:
             response_line, _ = get_response(ser)
@@ -61,8 +57,9 @@ def get_response(ser) -> (str, str):
         # byte_2: "*" indicates success, "#" indicates error
         if byte_2 + byte_1 + byte_0 in (b"*\r\n", b"#\r\n"):
             # print("Command completed.")
-            flag = b"".join(response[-3:-2])
-            response = b"".join(response[0:-4])
+            flag = response[-3]
+            # response = b"".join(response[0:-4])
+            response = b"".join(response)
             return response, flag
         byte_2 = byte_1
         byte_1 = byte_0
@@ -73,7 +70,7 @@ def get_response(ser) -> (str, str):
     return response, flag
 
 
-def send_command(ser_conn: SerParam, command: str) -> (str, str):
+def etech_send_command(ser_conn: SerParam, command: str) -> (str, str):
     """
     Send a serial command to 8011M deckbox and return tuple containing two
     strings (reponse, status flag)
@@ -87,9 +84,9 @@ def send_command(ser_conn: SerParam, command: str) -> (str, str):
         parity=ser_conn.parity,
         stopbits=ser_conn.stop,
         bytesize=ser_conn.bytesize,
-        timeout=SER_TIMEOUT,
+        timeout=ser_conn.timeout,
     ) as ser:
-        print("Connected to EgeTech deckbox: " + ser.portstr)
+        command = bytes(command,"UTF-8")
         ser.write(command)
         print(f"Sent command: {command}")
 

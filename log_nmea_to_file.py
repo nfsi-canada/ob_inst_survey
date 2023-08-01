@@ -10,17 +10,17 @@ from time import sleep
 import ob_inst_survey as obsurv
 
 TIMESTAMP_START = datetime.now().strftime("%Y-%m-%d_%H-%M")
-NMEA_FILEPREFIX = "NMEA"
-NMEA_PATH = Path("./logs/nmea/")
-NMEA_FILENAME = NMEA_PATH / f"{NMEA_FILEPREFIX}_{TIMESTAMP_START}.txt"
+FILEPREFIX = "NMEA"
+FILEPATH = Path("./logs/nmea/")
+FILENAME = FILEPATH / f"{FILEPREFIX}_{TIMESTAMP_START}.txt"
 
 
 def main(ip_conn=obsurv.IpParam):
     """
     Initialise NMEA data stream and log to text file.
     """
-    NMEA_PATH.mkdir(parents=True, exist_ok=True)
-    print(f"Logging to {NMEA_FILENAME}")
+    FILEPATH.mkdir(parents=True, exist_ok=True)
+    print(f"Logging to {FILENAME}")
 
     ip_conn = obsurv.IpParam(port=50000, addr="192.168.1.107", prot="TCP")
     ip_conn = obsurv.IpParam(port=50001, addr="127.0.0.1", prot="UDP")
@@ -34,12 +34,12 @@ def main(ip_conn=obsurv.IpParam):
             sentence = get_next_sentence(nmea_q)
             if not sentence:
                 continue
-            with open(NMEA_FILENAME, "a+", newline="", encoding="utf-8") as nmea_file:
+            with open(FILENAME, "a+", newline="", encoding="utf-8") as nmea_file:
                 nmea_file.write(f"{sentence}\n")
                 print(sentence)
 
     except KeyboardInterrupt:
-        sys.exit("*** End Survey ***")
+        sys.exit("*** End NMEA Logging ***")
 
 
 def get_next_sentence(nmea_q: qu.Queue) -> str:

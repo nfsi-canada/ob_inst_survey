@@ -13,6 +13,7 @@ from serial import Serial
 @dataclass
 class SerParam:
     """Dataclass for specifying serial connection parameters."""
+
     port: str = "COM2"
     baud: int = 9600
     stop: int = 1
@@ -38,7 +39,7 @@ def __receive_serial(ser_conn: SerParam, edgetech_q: qu.Queue[str]):
         print(f"Connected to EgeTech deckbox: {ser.portstr} at {ser.baudrate} baud.")
 
         while True:
-            response_line, _ = get_response(ser)
+            response_line = get_response(ser)
             if response_line != b"":
                 now = dt.now()
                 now = now.strftime("%Y-%m-%dT%H:%M:%S.%f")
@@ -46,54 +47,11 @@ def __receive_serial(ser_conn: SerParam, edgetech_q: qu.Queue[str]):
                 edgetech_q.put(f"{now} {response_line}")
 
 
-def get_response(ser) -> (str, str):
-    """flag variable is only relevant when 8011M is in host mode."""
+def get_response(ser) -> str:
     response = []
-    flag = ""
-    byte_2 = b""
-    byte_1 = b""
-    byte_0 = ser.read(1)
-    while byte_0 != b"":  # next_byte will be "" after ser.timeout
-        response.append(byte_0)
-        print(byte_0.decode("UTF-8"), end="", flush=True)
-        byte_tail = byte_2 + byte_1 + byte_0
-        # byte_2: "*" indicates success, "#" indicates error
-        if (
-            byte_tail in (b"*\r\n", b"#\r\n", b"S\r\n") or
-            (byte_tail == b"..." and
-            (b"".join(response[-9:]) == b"."*9))
-        ):
-
-            flag = response[-3]
-            response = b"".join(response)
-            return response, flag
-        byte_2 = byte_1
-        byte_1 = byte_0
-        byte_0 = ser.read(1)
-    # If ser.timeout with no terminating success/fail (*/#/S).
-    flag = b"T"
+    byte_next = ser.read(1)
+    while byte_next != b"":  # next_byte will be "" after ser.timeout
+        response.append(byte_next)
+        print(byte_next.decode("UTF-8"), end="", flush=True)
     response = b"".join(response)
-    return response, flag
-
-
-def etech_send_command(ser_conn: SerParam, command: str) -> (str, str):
-    """
-    Send a serial command to 8011M deckbox and return tuple containing two
-    strings (reponse, status flag)
-    "*" indicates success
-    "#" indicates error
-    "T" indicates timeout
-    """
-    with Serial(
-        port=ser_conn.port,
-        baudrate=ser_conn.baud,
-        parity=ser_conn.parity,
-        stopbits=ser_conn.stop,
-        bytesize=ser_conn.bytesize,
-        timeout=ser_conn.timeout,
-    ) as ser:
-        command = bytes(command,"UTF-8")
-        ser.write(command)
-        print(f"Sent command: {command}")
-
-        return get_response(ser)
+    return response

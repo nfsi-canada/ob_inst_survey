@@ -1,7 +1,7 @@
 """
 Log EdgeTech deckbox serial responses to a text file.
 """
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 import sys
 from time import sleep
@@ -16,12 +16,14 @@ FILEPATH = Path("./logs/edgetech/")
 FILENAME = FILEPATH / f"{FILEPREFIX}_{TIMESTAMP_START}.txt"
 
 
-def main(ser_conn=obsurv.IpParam):
+def main(ser_conn=obsurv.SerParam):
     """
-   Initialise EdgeTech data stream and log to text file.
+    Initialise EdgeTech data stream and log to text file.
     """
-    u_range_gate = 500
-    serial_timeout = 0.5 + u_range_gate/1000
+    u_range_gate = 3500  # milliseconds
+    # Set serial timout to be greater of upper range gate plus a little extra
+    # the or time required to transmir BACS command.
+    serial_timeout = 0.5 + u_range_gate / 1000
     if serial_timeout < 11:
         serial_timeout = 11
 
@@ -39,23 +41,27 @@ def main(ser_conn=obsurv.IpParam):
             bytesize=ser_conn.bytesize,
             timeout=ser_conn.timeout,
         ) as ser:
-            print(f"Connected to EgeTech deckbox: {ser.portstr} at {ser.baudrate} baud.")
+            print(
+                f"Connected to EgeTech deckbox: {ser.portstr} at {ser.baudrate} baud."
+            )
 
             # Send CR/LF to put deckbox into Host mode for receiving commands.
             command = ""
             send_command(ser, command)
 
             ser.timeout = 0.1
-            response, flag = obsurv.get_response(ser)
+            response, flag = get_response(ser)
             ser.timeout = ser_conn.timeout
             if flag == b"#":
                 print("Deckbox already in Host Mode.")
                 print(f"Response: {response}")
 
+            # Set an upper range gate because if not set the range request
+            # never times out.
             command = f"ug{u_range_gate:05d}"
             send_command(ser, command)
             ser.timeout = 0.1
-            response, flag = obsurv.get_response(ser)
+            response, flag = get_response(ser)
             ser.timeout = ser_conn.timeout
 
             while True:
@@ -66,12 +72,12 @@ def main(ser_conn=obsurv.IpParam):
 
                 while True:
                     sleep(0.001)  # Prevents idle loop from 100% CPU thread usage.
-                    response_line, flag = obsurv.get_response(ser)
+                    response_line, flag = get_response(ser)
                     if response_line == b"":
                         if stop_at_next:
                             break
                         continue
-                    ser.timeout=serial_timeout
+                    ser.timeout = serial_timeout
 
                     now = datetime.now()
                     now = now.strftime("%Y-%m-%dT%H:%M:%S.%f")
@@ -80,15 +86,14 @@ def main(ser_conn=obsurv.IpParam):
                     with open(FILENAME, "a+", newline="", encoding="utf-8") as log_file:
                         log_file.write(f"{response_line} {flag}\n")
                     if flag == ".":
-                        ser.write(b" ") # Cancel listening for BACS command.
+                        ser.write(b" ")  # Cancel listening for BACS command.
                     elif flag == "S":
-                        # If response is a range time (IN or GR command) then
+                        # If response received is a range time value then
                         # it may or may not have a following * or # flag.
-                        ser.timeout=0.1
+                        ser.timeout = 0.1
                         stop_at_next = True
                     else:
                         break
-
 
     except KeyboardInterrupt:
         sys.exit("*** End EdgeTech Command Logging ***")
@@ -114,6 +119,33 @@ def send_command(ser, command):
         log_file.write(f"Command: {command}\n")
 
     return
+
+
+def get_response(ser) -> (str, str):
+    """flag variable is only relevant when 8011M is in host mode."""
+    response = []
+    flag = ""
+    byte_2 = b""
+    byte_1 = b""
+    byte_0 = ser.read(1)
+    while byte_0 != b"":  # next_byte will be "" after ser.timeout
+        response.append(byte_0)
+        print(byte_0.decode("UTF-8"), end="", flush=True)
+        byte_tail = byte_2 + byte_1 + byte_0
+        # byte_2: "*" indicates success, "#" indicates error
+        if byte_tail in (b"*\r\n", b"#\r\n", b"S\r\n") or (
+            byte_tail == b"..." and (b"".join(response[-9:]) == b"." * 9)
+        ):
+            flag = response[-3]
+            response = b"".join(response)
+            return response, flag
+        byte_2 = byte_1
+        byte_1 = byte_0
+        byte_0 = ser.read(1)
+    # If ser.timeout with no terminating success/fail (*/#/S).
+    flag = b"T"
+    response = b"".join(response)
+    return response, flag
 
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@ Initiates a thread that connects to a serial data stream from an EdgeTech
 deckbox and populates the specified Queue with received strings.
 """
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime as dt
 import queue as qu
 from threading import Thread
 
@@ -40,7 +40,7 @@ def __receive_serial(ser_conn: SerParam, edgetech_q: qu.Queue[str]):
         while True:
             response_line, _ = get_response(ser)
             if response_line != b"":
-                now = datetime.now()
+                now = dt.now()
                 now = now.strftime("%Y-%m-%dT%H:%M:%S.%f")
                 response_line = response_line.decode("UTF-8").strip()
                 edgetech_q.put(f"{now} {response_line}")
@@ -49,22 +49,28 @@ def __receive_serial(ser_conn: SerParam, edgetech_q: qu.Queue[str]):
 def get_response(ser) -> (str, str):
     """flag variable is only relevant when 8011M is in host mode."""
     response = []
+    flag = ""
     byte_2 = b""
     byte_1 = b""
     byte_0 = ser.read(1)
     while byte_0 != b"":  # next_byte will be "" after ser.timeout
         response.append(byte_0)
+        print(byte_0.decode("UTF-8"), end="", flush=True)
+        byte_tail = byte_2 + byte_1 + byte_0
         # byte_2: "*" indicates success, "#" indicates error
-        if byte_2 + byte_1 + byte_0 in (b"*\r\n", b"#\r\n"):
-            # print("Command completed.")
+        if (
+            byte_tail in (b"*\r\n", b"#\r\n", b"S\r\n") or
+            (byte_tail == b"..." and
+            (b"".join(response[-9:]) == b"."*9))
+        ):
+
             flag = response[-3]
-            # response = b"".join(response[0:-4])
             response = b"".join(response)
             return response, flag
         byte_2 = byte_1
         byte_1 = byte_0
         byte_0 = ser.read(1)
-    # If ser.timeout with no terminating success/fail (*/#).
+    # If ser.timeout with no terminating success/fail (*/#/S).
     flag = b"T"
     response = b"".join(response)
     return response, flag

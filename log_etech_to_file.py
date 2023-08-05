@@ -5,12 +5,13 @@ from argparse import ArgumentParser
 from datetime import datetime
 from pathlib import Path
 import queue as qu
+import re
 import sys
 from time import sleep
 
 import ob_inst_survey as obsurv
 
-TIMESTAMP_START = datetime.now().strftime("%Y-%m-%d_%H-%M")
+TIMESTAMP_START = datetime.utcnow().strftime("%Y-%m-%d_%H-%M")
 DFLT_PREFIX = "edgetech"
 DFLT_PATH = Path.home() / "logs/edgetech/"
 
@@ -75,8 +76,24 @@ def main():
             sentence = get_next_sentence(edgetech_q)
             if not sentence:
                 continue
+            timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H-%M-%S.%f")
+            # If there is a timestamp at the beginning of each senetence
+            # (eg from a file replay) then it will use this time instead of the
+            # actual current time.
+            timestamp_pattern = (
+                r"^\d{4}[Tt:_-]\d{2}[Tt:_-]\d{2}[Tt:_-]"
+                r"\d{2}[Tt:_-]\d{2}[Tt:_-]\d{2}\.\d{0,6}"
+            )
+            try:
+                timestamp_sntc = re.match(timestamp_pattern, sentence).group()
+                timestamp_sntc = re.sub(r"[Tt:_-]", r"_", timestamp_sntc)
+                timestamp = datetime.strptime(timestamp_sntc, "%Y_%m_%d_%H_%M_%S.%f")
+                timestamp = timestamp.strftime("%Y-%m-%dT%H-%M-%S.%f")
+            except ValueError:
+                pass
+            sentence = re.sub(r"^.*([A-Z]{3}.*)[\\rn']*$", r"\g<1>", sentence)
             with open(outfilename, "a+", newline="", encoding="utf-8") as log_file:
-                log_file.write(f"{sentence}\n")
+                log_file.write(f"{timestamp} {sentence}\n")
                 print(sentence)
 
     except KeyboardInterrupt:

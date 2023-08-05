@@ -12,7 +12,7 @@ def nmea_replay_textfile(
     filename: str,
     nmea_q: qu.Queue[str],
     timestamp_start: datetime = None,
-    spd_fctr: int = 1,
+    spd_fctr: float = 1,
 ):
     """Initiate a queue simulating an NMEA data stream from a text file."""
     Thread(
@@ -29,7 +29,7 @@ def __nmea_from_file(
     spd_fctr: int,
 ):
     timestamp_prev = timestamp_start
-    timestamp_days = timedelta(days=0)
+    timestamp_date = None
     actltime_start = datetime.now()
     with open(filename, encoding="utf-8") as nmea_file:
         for sentence in nmea_file:
@@ -37,13 +37,23 @@ def __nmea_from_file(
             nmea_items = sentence.split(sep=",")
             if re.match(r"\d{6}\.\d{2,4}", nmea_items[1]):
                 timestamp_curr = datetime.strptime(nmea_items[1], "%H%M%S.%f")
+                secs = (
+                    timestamp_curr.hour * 3600
+                    + timestamp_curr.minute * 60
+                    + timestamp_curr.second
+                    + timestamp_curr.microsecond / 10e6
+                )
+                timestamp_delta = timedelta(seconds=secs)
+                if not timestamp_date:
+                    timestamp_date = set_timestamp_date(timestamp_curr, timestamp_start)
+                if timestamp_start and timestamp_curr.hour < timestamp_prev.hour:
+                    timestamp_date = timestamp_date + timedelta(days=1)
+                timestamp_curr = timestamp_date + timestamp_delta
                 if not timestamp_start:
                     timestamp_start = timestamp_curr
                     timestamp_prev = timestamp_start
-                if timestamp_curr.hour < timestamp_prev.hour:
-                    timestamp_days = timestamp_days + timedelta(days=1)
                 timestamp_prev = timestamp_curr
-                timestamp_diff = timestamp_curr + timestamp_days - timestamp_start
+                timestamp_diff = timestamp_curr - timestamp_start
                 while True:
                     # Pause until time for next NMEA sentence
                     sleep(0.001)  # Prevents idle loop from 100% CPU thread usage.
@@ -53,3 +63,12 @@ def __nmea_from_file(
             nmea_q.put(sentence)
 
     nmea_q.put("EOF")
+
+
+def set_timestamp_date(timestamp_curr, timestamp_start):
+    """Returns initial date to be prepended to NMEA timestamp."""
+    date = datetime(timestamp_start.year, timestamp_start.month, timestamp_start.day)
+    if timestamp_curr.hour > timestamp_start.hour:
+        return date - timedelta(days=1)
+    else:
+        return date

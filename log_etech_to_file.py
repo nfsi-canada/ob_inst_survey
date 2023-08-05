@@ -1,6 +1,7 @@
 """
 Log EdgeTech deckbox serial responses to a text file.
 """
+from argparse import ArgumentParser
 from datetime import datetime
 from pathlib import Path
 import queue as qu
@@ -10,22 +11,63 @@ from time import sleep
 import ob_inst_survey as obsurv
 
 TIMESTAMP_START = datetime.now().strftime("%Y-%m-%d_%H-%M")
-FILEPREFIX = "edgetech"
-FILEPATH = Path("./logs/edgetech/")
-FILENAME = FILEPATH / f"{FILEPREFIX}_{TIMESTAMP_START}.txt"
+DFLT_PREFIX = "edgetech"
+DFLT_PATH = Path.home() / "logs/edgetech/"
 
 
-def main(ser_conn=obsurv.IpParam):
+def main():
     """
-   Initialise EdgeTech data stream and log to text file.
+    Initialise EdgeTech data stream and log to text file.
     """
-    FILEPATH.mkdir(parents=True, exist_ok=True)
-    print(f"Logging to {FILENAME}")
+    # Default CLI arguments.
+    ser_param = obsurv.SerParam()
 
-    ser_conn = obsurv.SerParam(port="COM5", baud=9600)
+    # Retrieve CLI arguments.
+    helpdesc: str = (
+        "Receives a data stream from an EdgeTech 8011M acoustic deck box via "
+        "serial connection and logs the received stream to a text file located "
+        "in the directory specified. "
+        "If an input file is specified (containg EdgeTech response sentences) "
+        "then all serial parameters will be ignored and instead the specified "
+        "file will be replayed as if it is a live stream."
+    )
+    parser = ArgumentParser(
+        parents=[
+            obsurv.out_filepath_parser(DFLT_PATH),
+            obsurv.out_fileprefix_parser(DFLT_PREFIX),
+            obsurv.ser_arg_parser(ser_param),
+            obsurv.replayfile_parser(None),
+        ],
+        description=helpdesc,
+    )
+    args = parser.parse_args()
+    outfilepath: Path = args.outfilepath
+    outfilename: str = outfilepath / f"{args.outfileprefix}_{TIMESTAMP_START}.txt"
+    ser_param = obsurv.SerParam(
+        port=args.serport,
+        baud=args.serbaud,
+        stop=args.serstop,
+        parity=args.serparity,
+        bytesize=args.serbytesize,
+    )
+    replay_file: Path = args.replayfile
+    replay_start: datetime = args.replaystart
+    replay_speed: float = args.replayspeed
+
+    # Create directory for logging.
+    outfilepath.mkdir(parents=True, exist_ok=True)
+    print(f"Logging EdgeTech responses to {outfilename}")
 
     edgetech_q: qu.Queue[str] = qu.Queue()
-    obsurv.etech_serial_stream(ser_conn, edgetech_q)
+    if replay_file:
+        obsurv.etech_replay_textfile(
+            filename=replay_file,
+            edgetech_q=edgetech_q,
+            spd_fctr=replay_speed,
+            timestamp_start=replay_start,
+        )
+    else:
+        obsurv.etech_serial_stream(ser_param, edgetech_q)
 
     try:
         while True:
@@ -33,7 +75,7 @@ def main(ser_conn=obsurv.IpParam):
             sentence = get_next_sentence(edgetech_q)
             if not sentence:
                 continue
-            with open(FILENAME, "a+", newline="", encoding="utf-8") as log_file:
+            with open(outfilename, "a+", newline="", encoding="utf-8") as log_file:
                 log_file.write(f"{sentence}\n")
                 print(sentence)
 

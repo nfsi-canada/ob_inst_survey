@@ -1,6 +1,7 @@
 """
 Log NMEA stream to a text file.
 """
+from argparse import ArgumentParser
 from datetime import datetime
 from pathlib import Path
 import queue as qu
@@ -10,23 +11,62 @@ from time import sleep
 import ob_inst_survey as obsurv
 
 TIMESTAMP_START = datetime.now().strftime("%Y-%m-%d_%H-%M")
-FILEPREFIX = "NMEA"
-FILEPATH = Path("./logs/nmea/")
-FILENAME = FILEPATH / f"{FILEPREFIX}_{TIMESTAMP_START}.txt"
+DFLT_PREFIX = "NMEA"
+DFLT_PATH = Path.home() / "logs/nmea/"
 
 
-def main(ip_conn=obsurv.IpParam):
+def main():
     """
     Initialise NMEA data stream and log to text file.
     """
-    FILEPATH.mkdir(parents=True, exist_ok=True)
-    print(f"Logging to {FILENAME}")
+    # Default CLI arguments.
+    ip_param = obsurv.IpParam()
 
-    ip_conn = obsurv.IpParam(port=50000, addr="192.168.1.107", prot="TCP")
-    ip_conn = obsurv.IpParam(port=50001, addr="127.0.0.1", prot="UDP")
+    # Retrieve CLI arguments.
+    helpdesc: str = (
+        "Receives an NMEA stream via either UDP or TCP over an IP connection "
+        "and logs the received stream to a text file located in the directory "
+        "specified. "
+        "If an input file is specified (containg NMEA text sentences) then "
+        "all IP parameters will be ignored and instead the specified file will "
+        "be replayed as if it is a live stream."
+    )
+    parser = ArgumentParser(
+        parents=[
+            obsurv.out_filepath_parser(DFLT_PATH),
+            obsurv.out_fileprefix_parser(DFLT_PREFIX),
+            obsurv.ip_arg_parser(ip_param),
+            obsurv.replayfile_parser(None),
+        ],
+        description=helpdesc,
+    )
+    args = parser.parse_args()
+    outfilepath: Path = args.outfilepath
+    outfilename: str = outfilepath / f"{args.outfileprefix}_{TIMESTAMP_START}.txt"
+    ip_param = obsurv.IpParam(
+        port=args.ipport,
+        addr=args.ipaddr,
+        prot=args.ipprot,
+        buffer=args.ipbuffer,
+    )
+    replay_file: Path = args.replayfile
+    replay_start: datetime = args.replaystart
+    replay_speed: float = args.replayspeed
+
+    # Create directory for logging.
+    outfilepath.mkdir(parents=True, exist_ok=True)
+    print(f"Logging NMEA to {outfilename}")
 
     nmea_q: qu.Queue[str] = qu.Queue()
-    obsurv.nmea_ip_stream(ip_conn, nmea_q)
+    if replay_file:
+        obsurv.nmea_replay_textfile(
+            filename=replay_file,
+            nmea_q=nmea_q,
+            spd_fctr=replay_speed,
+            timestamp_start=replay_start,
+        )
+    else:
+        obsurv.nmea_ip_stream(ip_param, nmea_q)
 
     try:
         while True:
@@ -34,7 +74,7 @@ def main(ip_conn=obsurv.IpParam):
             sentence = get_next_sentence(nmea_q)
             if not sentence:
                 continue
-            with open(FILENAME, "a+", newline="", encoding="utf-8") as nmea_file:
+            with open(outfilename, "a+", newline="", encoding="utf-8") as nmea_file:
                 nmea_file.write(f"{sentence}\n")
                 print(sentence)
 

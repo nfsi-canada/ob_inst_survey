@@ -39,7 +39,7 @@ def __receive_serial(ser_conn: SerParam, edgetech_q: qu.Queue[str]):
         print(f"Connected to EgeTech deckbox: {ser.portstr} at {ser.baudrate} baud.")
 
         while True:
-            response_line = get_response(ser)
+            response_line = _get_response(ser)
             if response_line != b"":
                 now = dt.now()
                 now = now.strftime("%Y-%m-%dT%H:%M:%S.%f")
@@ -47,7 +47,7 @@ def __receive_serial(ser_conn: SerParam, edgetech_q: qu.Queue[str]):
                 edgetech_q.put(f"{now} {response_line}")
 
 
-def get_response(ser) -> str:
+def _get_response(ser) -> str:
     response = []
     byte_next = ser.read(1)
     while byte_next != b"":  # next_byte will be "" after ser.timeout

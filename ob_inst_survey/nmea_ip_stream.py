@@ -30,8 +30,8 @@ class IpParam:
 
     def __post_init__(self):
         # Validate IP Protocol
-        self.prot = self.prot.lower()
-        if self.prot not in ("udp", "tcp"):
+        self.prot = self.prot.upper()
+        if self.prot not in ("UDP", "TCP"):
             raise ValueError(
                 f"{self.prot} is not a valid protocol. Must be either 'UDP' or 'TCP'."
             )
@@ -47,13 +47,13 @@ class IpParam:
 
 def nmea_ip_stream(ip_conn: IpParam, nmea_q: qu.Queue[str]):
     """Initiate a queue receiving an NMEA data stream."""
-    if ip_conn.prot == "udp":
-        Thread(target=__receive_udp, args=(ip_conn, nmea_q), daemon=True).start()
-    elif ip_conn.prot == "tcp":
-        Thread(target=__receive_tcp, args=(ip_conn, nmea_q), daemon=True).start()
+    if ip_conn.prot == "UDP":
+        Thread(target=_receive_udp, args=(ip_conn, nmea_q), daemon=True).start()
+    elif ip_conn.prot == "TCP":
+        Thread(target=_receive_tcp, args=(ip_conn, nmea_q), daemon=True).start()
 
 
-def __receive_udp(udp_conn: IpParam, nmea_q: qu.Queue[str]):
+def _receive_udp(udp_conn: IpParam, nmea_q: qu.Queue[str]):
     """Listen on UDP port and populate queue with NMEA stream."""
     with socket.socket(family=socket.AF_INET, type=socket.SOCK_DGRAM) as nmea_server:
         nmea_server.bind((udp_conn.addr, udp_conn.port))
@@ -66,12 +66,12 @@ def __receive_udp(udp_conn: IpParam, nmea_q: qu.Queue[str]):
         while True:
             message = nmea_server.recv(udp_conn.buffer)
             if message:
-                nmea_lines = __msg_to_sentences(message)
+                nmea_lines = _msg_to_sentences(message)
                 for line in nmea_lines:
                     nmea_q.put(line)
 
 
-def __receive_tcp(tcp_conn: IpParam, nmea_q: qu.Queue[str]):
+def _receive_tcp(tcp_conn: IpParam, nmea_q: qu.Queue[str]):
     """
     Connect to TCP server and populate nmea_q with NMEA sentences.
     If a TCP timeout error it will populate nmea_q with str "TimeoutError".
@@ -110,7 +110,7 @@ def __receive_tcp(tcp_conn: IpParam, nmea_q: qu.Queue[str]):
             while True:
                 message = nmea_client.recv(tcp_conn.buffer)
                 if message:
-                    nmea_lines = __msg_to_sentences(message)
+                    nmea_lines = _msg_to_sentences(message)
                     for line in nmea_lines:
                         nmea_q.put(line)
                 else:
@@ -121,7 +121,7 @@ def __receive_tcp(tcp_conn: IpParam, nmea_q: qu.Queue[str]):
                     break
 
 
-def __msg_to_sentences(message: str) -> list[str]:
+def _msg_to_sentences(message: str) -> list[str]:
     message = message.decode("utf-8")
     nmea_sentences = []
     for sentence in message.splitlines():

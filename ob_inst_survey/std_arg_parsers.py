@@ -1,0 +1,177 @@
+"""Functions for providing args/parameters to modules."""
+
+from argparse import ArgumentParser, ArgumentTypeError
+from datetime import datetime
+from pathlib import Path
+import re
+
+import ob_inst_survey as obsurv
+
+DFLT_PATH = Path.home()
+DFLT_INFILE = None
+
+
+def replayfile_parser(dflt_replayfile: Path = DFLT_INFILE):
+    """Returns parser for full path and filename for input file."""
+    parser = ArgumentParser(add_help=False)
+    infile_group = parser.add_argument_group(title="Input File Parameters:")
+    infile_group.add_argument(
+        "--replayfile",
+        help=(f"Full path and filename for input file. Default: {dflt_replayfile}"),
+        default=dflt_replayfile,
+        type=Path,
+    )
+    infile_group.add_argument(
+        "--replaystart",
+        help=(
+            "Starting time (UTC) of the file to be replayed. "
+            "If not specified then assumed to be time of first "
+            "record in the file. Format: 'yyyy-mm-dd_HH:MM:SS', "
+            "Default: None"
+        ),
+        default=None,
+        type=timestamp_type,
+    )
+    infile_group.add_argument(
+        "--replayspeed",
+        help=("Speed multiplier for replaying file. Default: 1"),
+        default=1,
+        type=float,
+    )
+    return parser
+
+
+def out_filepath_parser(dflt_filepath: Path = DFLT_PATH):
+    """Returns parser for file directory location"""
+    parser = ArgumentParser(add_help=False)
+    parser.add_argument(
+        "--outfilepath",
+        help=(f"Full directory path for file location. Default: {dflt_filepath}"),
+        default=dflt_filepath,
+        type=Path,
+    )
+    return parser
+
+
+def out_fileprefix_parser(dflt_fileprefix: str):
+    """Returns parser for file prefix string"""
+    parser = ArgumentParser(add_help=False)
+    parser.add_argument(
+        "--outfileprefix",
+        help=(
+            f"Filename prefix where the full filename will be "
+            f"'<fileprefix>_YYYY-MM-DD_HH-MM.txt'. "
+            f"The timestamp used will be the time when logging starts. "
+            f"Default: {dflt_fileprefix}"
+        ),
+        default=dflt_fileprefix,
+        type=str,
+    )
+    return parser
+
+
+def ip_arg_parser(nmea_conn: obsurv.IpParam):
+    """
+    Returns parser for Internet Protocol (IP) connection parameters.
+    """
+    parser = ArgumentParser(add_help=False)
+    ip_group = parser.add_argument_group(title="IP Parameters:")
+    ip_group.add_argument(
+        "--ipaddr",
+        help=f"IP address for UDP or TCP connection. Default: {nmea_conn.addr}",
+        default=nmea_conn.addr,
+    )
+    ip_group.add_argument(
+        "--ipport",
+        type=int,
+        help=f"IP Port for UDP or TCP connection. Default: {nmea_conn.port}",
+        default=nmea_conn.port,
+    )
+    ip_group.add_argument(
+        "--ipprot",
+        help=f"Proticol for IP connection (TCP/UDP). Default: {nmea_conn.prot}",
+        default=nmea_conn.prot,
+    )
+    ip_group.add_argument(
+        "--ipbuffer",
+        help=f"Buffer size (bytes) for IP connection. Default: {nmea_conn.buffer}",
+        default=nmea_conn.buffer,
+    )
+
+    return parser
+
+
+def ser_arg_parser(ser_conn: obsurv.SerParam):
+    """
+    Returns parser for IP connection parameters.
+    """
+    parser = ArgumentParser(add_help=False)
+    parser.add_argument(
+        "--serport",
+        help=f'Serial port name. Default: "{ser_conn.port}"',
+        default=ser_conn.port,
+    )
+    parser.add_argument(
+        "--serbaud",
+        type=int,
+        help=f"Serial baud rate. Default: {ser_conn.baud}",
+        default=ser_conn.baud,
+    )
+    parser.add_argument(
+        "--serparity",
+        help=f'Serial parity. Default: "{ser_conn.parity}"',
+        default=ser_conn.parity,
+    )
+    parser.add_argument(
+        "--serstop",
+        type=int,
+        help=f"Serial stop bit. Default: {ser_conn.stop}",
+        default=ser_conn.stop,
+    )
+    parser.add_argument(
+        "--serbytesize",
+        type=int,
+        help=f"Serial byte size. Default: {ser_conn.bytesize}",
+        default=ser_conn.bytesize,
+    )
+    return parser
+
+
+def edgetech_arg_parser(
+    ser_conn: obsurv.SerParam,
+    accou_turntime: float,
+    accou_spd: int,
+):
+    """
+    Returns parser for EdgeTech 8011M deckbox parameters.
+    """
+    parser = ArgumentParser(
+        parents=[ser_arg_parser(ser_conn)],
+        add_help=False,
+    )
+    parser.add_argument(
+        "--acouturn",
+        type=float,
+        help=f"Delay in ms for reply from BPR transducer. Default: {accou_turntime}",
+        default=accou_turntime,
+    )
+    parser.add_argument(
+        "--acouspd",
+        type=int,
+        help=f"Speed of sound in water (typical 1450 to 1570 m/sec). Default: {accou_spd}",
+        default=accou_spd,
+    )
+    return parser
+
+
+def timestamp_type(timestamp: str) -> datetime:
+    """Custom argparse type for user timestamp values given from the command line"""
+    try:
+        timestamp = re.sub(r"[-: _/tT]", "_", timestamp)
+        return datetime.strptime(timestamp, "%Y_%m_%d_%H_%M_%S")
+    except ValueError as exc:
+        msg = (
+            f"Specified timestamp ({timestamp}) is not valid! "
+            f"Expected format, 'yyyy-mm-dd_HH:MM:SS'!"
+        )
+        raise ArgumentTypeError(msg) from exc

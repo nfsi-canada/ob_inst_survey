@@ -3,7 +3,7 @@ Simulates a serial stream from a previously saved EdgeTech deckbox streamed
 text file.
 """
 from datetime import datetime
-import queue as qu
+from queue import Queue
 import re
 from threading import Thread
 from time import sleep
@@ -11,7 +11,7 @@ from time import sleep
 
 def etech_replay_textfile(
     filename: str,
-    edgetech_q: qu.Queue[str, datetime],
+    edgetech_q: Queue[str, datetime],
     timestamp_start: datetime = None,
     spd_fctr: int = 1,
 ):
@@ -25,7 +25,7 @@ def etech_replay_textfile(
 
 def __etech_from_file(
     filename: str,
-    edgetech_q: qu.Queue[str, datetime],
+    edgetech_q: Queue[str, datetime],
     timestamp_start: datetime,
     spd_fctr: int,
 ):

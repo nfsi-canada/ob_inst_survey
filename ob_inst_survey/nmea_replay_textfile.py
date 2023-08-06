@@ -2,7 +2,7 @@
 Simulates an NMEA stream from a previously saved NMEA text file.
 """
 from datetime import datetime, timedelta
-import queue as qu
+from queue import Queue
 import re
 from threading import Thread
 from time import sleep
@@ -10,7 +10,7 @@ from time import sleep
 
 def nmea_replay_textfile(
     filename: str,
-    nmea_q: qu.Queue[str],
+    nmea_q: Queue[str],
     timestamp_start: datetime = None,
     spd_fctr: float = 1,
 ):
@@ -24,7 +24,7 @@ def nmea_replay_textfile(
 
 def __nmea_from_file(
     filename: str,
-    nmea_q: qu.Queue[str],
+    nmea_q: Queue[str],
     timestamp_start: datetime,
     spd_fctr: int,
 ):

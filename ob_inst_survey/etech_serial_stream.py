@@ -7,7 +7,7 @@ response was received.
 """
 from dataclasses import dataclass
 from datetime import datetime
-import queue as qu
+from queue import Queue
 from threading import Thread
 
 from serial import Serial
@@ -25,12 +25,12 @@ class SerParam:
     timeout: float = 0.05
 
 
-def etech_serial_stream(ser_conn: SerParam, edgetech_q: qu.Queue[str, datetime]):
+def etech_serial_stream(ser_conn: SerParam, edgetech_q: Queue[str, datetime]):
     """Initiate a queue receiving an EdgeTech deckbox data stream."""
     Thread(target=__receive_serial, args=(ser_conn, edgetech_q), daemon=True).start()
 
 
-def __receive_serial(ser_conn: SerParam, edgetech_q: qu.Queue[str, datetime]):
+def __receive_serial(ser_conn: SerParam, edgetech_q: Queue[str, datetime]):
     with Serial(
         port=ser_conn.port,
         baudrate=ser_conn.baud,

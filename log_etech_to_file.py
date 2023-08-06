@@ -4,7 +4,7 @@ Log EdgeTech deckbox serial responses to a text file.
 from argparse import ArgumentParser
 from datetime import datetime
 from pathlib import Path
-import queue as qu
+from queue import Queue
 import sys
 from time import sleep
 
@@ -58,7 +58,7 @@ def main():
     outfilepath.mkdir(parents=True, exist_ok=True)
     print(f"Logging EdgeTech responses to {outfilename}")
 
-    edgetech_q: qu.Queue[str, datetime] = qu.Queue()
+    edgetech_q: Queue[str, datetime] = Queue()
     if replay_file:
         obsurv.etech_replay_textfile(
             filename=replay_file,
@@ -67,7 +67,10 @@ def main():
             timestamp_start=replay_start,
         )
     else:
-        obsurv.etech_serial_stream(ser_param, edgetech_q)
+        obsurv.etech_serial_stream(
+            ser_conn=ser_param,
+            edgetech_q=edgetech_q,
+        )
 
     try:
         while True:
@@ -84,7 +87,7 @@ def main():
         sys.exit("*** End EdgeTech Logging ***")
 
 
-def get_next_sentence(edgetech_q: qu.Queue) -> str:
+def get_next_sentence(edgetech_q: Queue) -> str:
     """Return next sentence from NMEA queue."""
     if edgetech_q.empty():
         return None, None

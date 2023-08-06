@@ -4,7 +4,7 @@ Log NMEA stream to a text file.
 from argparse import ArgumentParser
 from datetime import datetime
 from pathlib import Path
-import queue as qu
+from queue import Queue
 import sys
 from time import sleep
 
@@ -57,7 +57,7 @@ def main():
     outfilepath.mkdir(parents=True, exist_ok=True)
     print(f"Logging NMEA to {outfilename}")
 
-    nmea_q: qu.Queue[str] = qu.Queue()
+    nmea_q: Queue[str] = Queue()
     if replay_file:
         obsurv.nmea_replay_textfile(
             filename=replay_file,
@@ -66,7 +66,10 @@ def main():
             timestamp_start=replay_start,
         )
     else:
-        obsurv.nmea_ip_stream(ip_param, nmea_q)
+        obsurv.nmea_ip_stream(
+            ip_conn=ip_param,
+            nmea_q=nmea_q,
+        )
 
     try:
         while True:
@@ -82,7 +85,7 @@ def main():
         sys.exit("*** End NMEA Logging ***")
 
 
-def get_next_sentence(nmea_q: qu.Queue) -> str:
+def get_next_sentence(nmea_q: Queue) -> str:
     """Return next sentence from NMEA queue."""
     if nmea_q.empty():
         return None

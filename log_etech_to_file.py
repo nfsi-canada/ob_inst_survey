@@ -5,7 +5,6 @@ from argparse import ArgumentParser
 from datetime import datetime
 from pathlib import Path
 import queue as qu
-import re
 import sys
 from time import sleep
 
@@ -59,7 +58,7 @@ def main():
     outfilepath.mkdir(parents=True, exist_ok=True)
     print(f"Logging EdgeTech responses to {outfilename}")
 
-    edgetech_q: qu.Queue[str] = qu.Queue()
+    edgetech_q: qu.Queue[str, datetime] = qu.Queue()
     if replay_file:
         obsurv.etech_replay_textfile(
             filename=replay_file,
@@ -73,25 +72,10 @@ def main():
     try:
         while True:
             sleep(0.001)  # Prevents idle loop from 100% CPU thread usage.
-            sentence = get_next_sentence(edgetech_q)
+            sentence, timestamp = get_next_sentence(edgetech_q)
             if not sentence:
                 continue
-            timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H-%M-%S.%f")
-            # If there is a timestamp at the beginning of each senetence
-            # (eg from a file replay) then it will use this time instead of the
-            # actual current time.
-            timestamp_pattern = (
-                r"^\d{4}[Tt:_-]\d{2}[Tt:_-]\d{2}[Tt:_-]"
-                r"\d{2}[Tt:_-]\d{2}[Tt:_-]\d{2}\.\d{0,6}"
-            )
-            try:
-                timestamp_sntc = re.match(timestamp_pattern, sentence).group()
-                timestamp_sntc = re.sub(r"[Tt:_-]", r"_", timestamp_sntc)
-                timestamp = datetime.strptime(timestamp_sntc, "%Y_%m_%d_%H_%M_%S.%f")
-                timestamp = timestamp.strftime("%Y-%m-%dT%H-%M-%S.%f")
-            except ValueError:
-                pass
-            sentence = re.sub(r"^.*([A-Z]{3}.*)[\\rn']*$", r"\g<1>", sentence)
+            timestamp = timestamp.strftime("%Y-%m-%dT%H-%M-%S.%f")
             with open(outfilename, "a+", newline="", encoding="utf-8") as log_file:
                 log_file.write(f"{timestamp} {sentence}\n")
                 print(sentence)
@@ -103,11 +87,11 @@ def main():
 def get_next_sentence(edgetech_q: qu.Queue) -> str:
     """Return next sentence from NMEA queue."""
     if edgetech_q.empty():
-        return None
-    edgetech_str = edgetech_q.get(block=False)
-    if edgetech_str in ["TimeoutError", "EOF"]:
-        sys.exit(f"*** {edgetech_str} ***")
-    return edgetech_str
+        return None, None
+    edgetech_str, timestamp = edgetech_q.get(block=False)
+    if edgetech_str == "EOF":
+        sys.exit(f"*** ETech: {edgetech_str} ***")
+    return edgetech_str, timestamp
 
 
 if __name__ == "__main__":

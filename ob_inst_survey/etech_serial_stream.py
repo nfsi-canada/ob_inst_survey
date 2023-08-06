@@ -1,9 +1,12 @@
 """
 Initiates a thread that connects to a serial data stream from an EdgeTech 
-deckbox and populates the specified Queue with received strings.
+deckbox.
+Populates the specified Queue with tuples. Each tuple conatins (str, datetime),
+where str is the Edgetech response senstence and timedate is the time the
+response was received.
 """
 from dataclasses import dataclass
-from datetime import datetime as dt
+from datetime import datetime
 import queue as qu
 from threading import Thread
 
@@ -22,12 +25,12 @@ class SerParam:
     timeout: float = 0.05
 
 
-def etech_serial_stream(ser_conn: SerParam, edgetech_q: qu.Queue[str]):
+def etech_serial_stream(ser_conn: SerParam, edgetech_q: qu.Queue[str, datetime]):
     """Initiate a queue receiving an EdgeTech deckbox data stream."""
     Thread(target=__receive_serial, args=(ser_conn, edgetech_q), daemon=True).start()
 
 
-def __receive_serial(ser_conn: SerParam, edgetech_q: qu.Queue[str]):
+def __receive_serial(ser_conn: SerParam, edgetech_q: qu.Queue[str, datetime]):
     with Serial(
         port=ser_conn.port,
         baudrate=ser_conn.baud,
@@ -41,10 +44,9 @@ def __receive_serial(ser_conn: SerParam, edgetech_q: qu.Queue[str]):
         while True:
             response_line = _get_response(ser)
             if response_line != b"":
-                now = dt.now()
-                now = now.strftime("%Y-%m-%dT%H:%M:%S.%f")
+                now = datetime.now()
                 response_line = response_line.decode("UTF-8").strip()
-                edgetech_q.put(f"{now} {response_line}")
+                edgetech_q.put((response_line, now))
 
 
 def _get_response(ser) -> str:

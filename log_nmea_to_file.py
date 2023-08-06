@@ -88,7 +88,7 @@ def get_next_sentence(nmea_q: qu.Queue) -> str:
         return None
     nmea_str = nmea_q.get(block=False)
     if nmea_str in ["TimeoutError", "EOF"]:
-        sys.exit(f"*** {nmea_str} ***")
+        sys.exit(f"*** NMEA: {nmea_str} ***")
     if not obsurv.nmea_checksum(nmea_str):
         print(
             f"!!! Checksum for NMEA line is invalid. Line has "

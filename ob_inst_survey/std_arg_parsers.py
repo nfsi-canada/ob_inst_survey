@@ -11,6 +11,55 @@ DFLT_PATH = Path.home()
 DFLT_INFILE = None
 
 
+def replay2files_parser(
+    dflt_nmeareplayfile: Path = DFLT_INFILE,
+    dflt_rngreplayfile: Path = DFLT_INFILE,
+):
+    """Returns parser for full path and filename for input file."""
+    parser = ArgumentParser(add_help=False)
+    infile_group = parser.add_argument_group(
+        title=(
+            "Input File Parameters:\n"
+            "(Only provide these parameters if replaying previously recorded "
+            "files instead of using live NMEA and Ranging data.)"
+        )
+    )
+    infile_group.add_argument(
+        "--replaynmea",
+        help=(
+            f"Full path and filename for NMEA input file. Default: {dflt_nmeareplayfile}"
+        ),
+        default=dflt_nmeareplayfile,
+        type=Path,
+    )
+    infile_group.add_argument(
+        "--replayrange",
+        help=(
+            f"Full path and filename for Ranging input file. Default: {dflt_rngreplayfile}"
+        ),
+        default=dflt_rngreplayfile,
+        type=Path,
+    )
+    infile_group.add_argument(
+        "--replaystart",
+        help=(
+            "Starting time (UTC) of the file to be replayed. "
+            "If not specified then assumed to be time of first "
+            "record in the file. Format: 'yyyy-mm-dd_HH:MM:SS', "
+            "Default: None"
+        ),
+        default=None,
+        type=timestamp_type,
+    )
+    infile_group.add_argument(
+        "--replayspeed",
+        help=("Speed multiplier for replaying file. Default: 1"),
+        default=1,
+        type=float,
+    )
+    return parser
+
+
 def replayfile_parser(dflt_replayfile: Path = DFLT_INFILE):
     """Returns parser for full path and filename for input file."""
     parser = ArgumentParser(add_help=False)
@@ -75,7 +124,7 @@ def ip_arg_parser(nmea_conn: obsurv.IpParam):
     Returns parser for Internet Protocol (IP) connection parameters.
     """
     parser = ArgumentParser(add_help=False)
-    ip_group = parser.add_argument_group(title="IP Parameters:")
+    ip_group = parser.add_argument_group(title="NMEA stream IP Parameters:")
     ip_group.add_argument(
         "--ipaddr",
         help=f"IP address for UDP or TCP connection. Default: {nmea_conn.addr}",
@@ -106,29 +155,30 @@ def ser_arg_parser(ser_conn: obsurv.SerParam):
     Returns parser for IP connection parameters.
     """
     parser = ArgumentParser(add_help=False)
-    parser.add_argument(
+    ser_group = parser.add_argument_group(title="Edgetech stream Serial Parameters:")
+    ser_group.add_argument(
         "--serport",
         help=f'Serial port name. Default: "{ser_conn.port}"',
         default=ser_conn.port,
     )
-    parser.add_argument(
+    ser_group.add_argument(
         "--serbaud",
         type=int,
         help=f"Serial baud rate. Default: {ser_conn.baud}",
         default=ser_conn.baud,
     )
-    parser.add_argument(
+    ser_group.add_argument(
         "--serparity",
         help=f'Serial parity. Default: "{ser_conn.parity}"',
         default=ser_conn.parity,
     )
-    parser.add_argument(
+    ser_group.add_argument(
         "--serstop",
         type=int,
         help=f"Serial stop bit. Default: {ser_conn.stop}",
         default=ser_conn.stop,
     )
-    parser.add_argument(
+    ser_group.add_argument(
         "--serbytesize",
         type=int,
         help=f"Serial byte size. Default: {ser_conn.bytesize}",
@@ -138,28 +188,27 @@ def ser_arg_parser(ser_conn: obsurv.SerParam):
 
 
 def edgetech_arg_parser(
-    ser_conn: obsurv.SerParam,
-    accou_turntime: float,
-    accou_spd: int,
+    etech_conn: obsurv.EtechParam,
 ):
     """
     Returns parser for EdgeTech 8011M deckbox parameters.
     """
     parser = ArgumentParser(
-        parents=[ser_arg_parser(ser_conn)],
+        parents=[ser_arg_parser(etech_conn)],
         add_help=False,
     )
-    parser.add_argument(
+    rng_group = parser.add_argument_group(title="Edgetech Ranging Parameters:")
+    rng_group.add_argument(
         "--acouturn",
         type=float,
-        help=f"Delay in ms for reply from BPR transducer. Default: {accou_turntime}",
-        default=accou_turntime,
+        help=f"Delay in ms for reply from BPR transducer. Default: {etech_conn.turn_time}",
+        default=etech_conn.turn_time,
     )
-    parser.add_argument(
+    rng_group.add_argument(
         "--acouspd",
         type=int,
-        help=f"Speed of sound in water (typical 1450 to 1570 m/sec). Default: {accou_spd}",
-        default=accou_spd,
+        help=f"Speed of sound in water (typical 1450 to 1570 m/sec). Default: {etech_conn.snd_spd}",
+        default=etech_conn.snd_spd,
     )
     return parser
 

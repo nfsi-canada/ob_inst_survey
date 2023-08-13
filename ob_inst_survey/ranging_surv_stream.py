@@ -1,3 +1,11 @@
+"""
+Initiates a thread that connects to an NMEA data stream via UDP or TCP, and 
+connects to a serial data stream from an EdgeTech deckbox.
+Or will simulate the same by replaying previously recorded text files. One
+containing NMEA data and the other containing EdgeTech ranging responses.
+It then populates the specified Queue with a dict for each range response. This
+disct will contain a union of NMEA and Range data fields.
+"""
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -10,7 +18,8 @@ from time import sleep
 import ob_inst_survey as obsurv
 
 
-LOG_COLS = (
+OBSVN_COLS = (
+    "flag",
     "utcTime",
     "rangeTime",
     "range",
@@ -37,19 +46,7 @@ LOG_COLS = (
     "rx",
 )
 
-DISPLAY_COLS = (
-    "utcTime",
-    "rangeTime",
-    "range",
-    "lat",
-    "lon",
-    "cog",
-    "sogKt",
-    "heading",
-)
-
 STARTTIME = datetime.now()
-TIMESTAMP_START = STARTTIME.strftime("%Y-%m-%d_%H-%M")
 
 
 @dataclass
@@ -135,7 +132,6 @@ def _get_ranging_dict(
         dict: _description_
     """
 
-    print(",".join(DISPLAY_COLS))
     accou = {
         "turnTime": etech_conn.turn_time,
         "sndSpd": etech_conn.snd_spd,
@@ -144,17 +140,15 @@ def _get_ranging_dict(
     # If replay text files are specified then the stream will be simulated by
     # 'replaying' the files. Otherwise assume streaming over the specified UDP
     # or TCP network connection.
-    actltime_start = datetime.now()
 
     # Start thread that will populate NMEA queue
     nmea_q: Queue[str] = Queue()
     if nmea_filename:
         obsurv.nmea_replay_textfile(
-            nmea_filename, nmea_q, actltime_start, timestamp_start, spd_fctr
+            nmea_filename, nmea_q, STARTTIME, timestamp_start, spd_fctr
         )
     else:
         obsurv.nmea_ip_stream(nmea_conn, nmea_q)
-    print("Waiting to receieve first NMEA record...")
 
     # If we are replaying from files then we need to have the timestamp from
     # the first NMEA record before starting Edgetech file replay to provide
@@ -170,7 +164,7 @@ def _get_ranging_dict(
         if not timestamp_start:
             timestamp_start = datetime.strptime(nmea_dict["utcTime"], "%H:%M:%S.%f")
         obsurv.etech_replay_textfile(
-            etech_filename, edgetech_q, actltime_start, timestamp_start, spd_fctr
+            etech_filename, edgetech_q, STARTTIME, timestamp_start, spd_fctr
         )
     else:
         obsurv.etech_serial_stream(etech_conn, edgetech_q)

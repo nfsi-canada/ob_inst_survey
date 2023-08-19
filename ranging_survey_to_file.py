@@ -85,9 +85,21 @@ def main():
         ],
         description=helpdesc,
     )
+    parser.add_argument(
+        "--lograw",
+        help=(
+            "Option to additionally log raw NMEA and Range data to files in "
+            "subdirectories of the provided <outfile_path>."
+        ),
+        action="store_true",
+        default=False,
+    )
     args = parser.parse_args()
-    outfilepath: Path = args.outfilepath
-    outfile_log: str = outfilepath / f"{args.outfileprefix}_{TIMESTAMP_START}.csv"
+    outfile_path: Path = args.outfilepath
+    outfile_log: str = outfile_path / f"{args.outfileprefix}_{TIMESTAMP_START}.csv"
+    rawfile_path = None
+    if args.lograw:
+        rawfile_path = outfile_path
     ip_param = obsurv.IpParam(
         port=args.ipport,
         addr=args.ipaddr,
@@ -109,7 +121,7 @@ def main():
     replay_speed: float = args.replayspeed
 
     # Create directories for logging (included raw NMEA and Ranging streams).
-    outfilepath.mkdir(parents=True, exist_ok=True)
+    outfile_path.mkdir(parents=True, exist_ok=True)
     print(f"Logging survey observations to {outfile_log}")
 
     # Initiate NMEA and Ranging data streams to the observation queue.
@@ -120,8 +132,10 @@ def main():
         etech_conn=etech_param,
         nmea_filename=replay_nmeafile,
         etech_filename=replay_rngfile,
-        timestamp_start=replay_start,
+        replay_start=replay_start,
         spd_fctr=replay_speed,
+        rawfile_path=rawfile_path,
+        rawfile_prefix=args.outfileprefix,
     )
 
     print(",".join(DISPLAY_COLS))
@@ -139,13 +153,9 @@ def main():
 
             # Display summary values to screen
             display_vals = [result_dict[key] for key in DISPLAY_COLS]
-            # values = []
-            # for key in DISPLAY_COLS:
-            #     values.append(result_dict[key])
             print(str(display_vals).strip("[]"))
 
             # Save values to log file
-
             save_dict = {key: result_dict[key] for key in OBSVN_COLS}
             with open(outfile_log, "a+", newline="", encoding="utf-8") as csvfile:
                 logwriter = csv.DictWriter(

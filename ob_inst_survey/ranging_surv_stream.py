@@ -47,6 +47,7 @@ OBSVN_COLS = (
 )
 
 STARTTIME = datetime.now()
+TIMESTAMP_START = STARTTIME.strftime("%Y-%m-%d_%H-%M")
 
 
 @dataclass
@@ -65,8 +66,10 @@ def ranging_survey_stream(
     etech_conn: EtechParam = EtechParam(),
     nmea_filename: Path = None,
     etech_filename: Path = None,
-    timestamp_start: datetime = None,
+    replay_start: datetime = None,
     spd_fctr: float = 1,
+    rawfile_path: Path = None,
+    rawfile_prefix: str = None,
 ):
     """
     Initiate a queue that populates with dicts of ranging obseravtions.
@@ -79,7 +82,7 @@ def ranging_survey_stream(
         etech_conn (obsurv.SerParam, optional): _description_. Defaults to None.
         nmea_filename (Path, optional): _description_. Defaults to None.
         etech_filename (Path, optional): _description_. Defaults to None.
-        timestamp_start (datetime, optional): _description_. Defaults to None.
+        replay_start (datetime, optional): _description_. Defaults to None.
         spd_fctr (float, optional): _description_. Defaults to 1.
     """
     if (nmea_filename or etech_filename) and not (nmea_filename and etech_filename):
@@ -93,6 +96,19 @@ def ranging_survey_stream(
             "response data streams!"
         )
 
+    # Create directories for logging raw NMEA and Ranging streams if specified.
+    rangefile_log = None
+    nmeafile_log = None
+    if rawfile_path:
+        rangefile_log: str = (
+            rawfile_path / f"rng/{rawfile_prefix}_RNG_{TIMESTAMP_START}.txt"
+        )
+        rangefile_log.parents[0].mkdir(parents=True, exist_ok=True)
+        nmeafile_log: str = (
+            rawfile_path / f"nmea/{rawfile_prefix}_NMEA_{TIMESTAMP_START}.txt"
+        )
+        nmeafile_log.parents[0].mkdir(parents=True, exist_ok=True)
+
     Thread(
         target=_get_ranging_dict,
         args=(
@@ -101,8 +117,10 @@ def ranging_survey_stream(
             etech_conn,
             nmea_filename,
             etech_filename,
-            timestamp_start,
+            replay_start,
             spd_fctr,
+            rangefile_log,
+            nmeafile_log,
         ),
         daemon=True,
     ).start()
@@ -114,8 +132,10 @@ def _get_ranging_dict(
     etech_conn: EtechParam,
     nmea_filename: Path,
     etech_filename: Path,
-    timestamp_start: datetime,
+    replay_start: datetime,
     spd_fctr: float,
+    rangefile_log: Path,
+    nmeafile_log: Path,
 ):
     """
     _summary_
@@ -125,7 +145,7 @@ def _get_ranging_dict(
         etech_conn (obsurv.SerParam, optional): _description_. Defaults to None.
         nmea_filename (Path, optional): _description_. Defaults to None.
         etech_filename (Path, optional): _description_. Defaults to None.
-        timestamp_start (datetime, optional): _description_. Defaults to None.
+        replay_start (datetime, optional): _description_. Defaults to None.
         spd_fctr (float, optional): _description_. Defaults to 1.
 
     Returns:
@@ -145,7 +165,7 @@ def _get_ranging_dict(
     nmea_q: Queue[str] = Queue()
     if nmea_filename:
         obsurv.nmea_replay_textfile(
-            nmea_filename, nmea_q, STARTTIME, timestamp_start, spd_fctr
+            nmea_filename, nmea_q, STARTTIME, replay_start, spd_fctr
         )
     else:
         obsurv.nmea_ip_stream(nmea_conn, nmea_q)
@@ -156,26 +176,26 @@ def _get_ranging_dict(
     while nmea_q.empty():
         sleep(0.001)  # Prevents idle loop from 100% CPU thread usage.
     nmea_str = nmea_q.get()
-    nmea_dict, nmea_next_str = _get_next_nmea_dict(nmea_q, nmea_str)
+    nmea_dict, nmea_next_str = _get_next_nmea_dict(nmea_q, nmea_str, nmeafile_log)
 
     # Start thread that will populate EdgeTech ranging queue
     edgetech_q: Queue[str] = Queue()
     if nmea_filename:
-        if not timestamp_start:
-            timestamp_start = datetime.strptime(nmea_dict["utcTime"], "%H:%M:%S.%f")
+        if not replay_start:
+            replay_start = datetime.strptime(nmea_dict["utcTime"], "%H:%M:%S.%f")
         obsurv.etech_replay_textfile(
-            etech_filename, edgetech_q, STARTTIME, timestamp_start, spd_fctr
+            etech_filename, edgetech_q, STARTTIME, replay_start, spd_fctr
         )
     else:
         obsurv.etech_serial_stream(etech_conn, edgetech_q)
 
     while True:
-        # obsvn_dict = {}
-        # obsvn_dict["flag"] = None
         if nmea_q.empty():
             sleep(0.001)  # Prevents idle loop from 100% CPU thread usage.
         else:
-            nmea_dict, nmea_next_str = _get_next_nmea_dict(nmea_q, nmea_next_str)
+            nmea_dict, nmea_next_str = _get_next_nmea_dict(
+                nmea_q, nmea_next_str, nmeafile_log
+            )
             if nmea_dict:
                 if nmea_dict["flag"] in ["TimeoutError", "EOF"]:
                     obsvn_q.put(nmea_dict)
@@ -183,7 +203,7 @@ def _get_ranging_dict(
         if edgetech_q.empty():
             pass
         else:
-            range_dict = _get_next_edgetech_dict(edgetech_q, accou)
+            range_dict = _get_next_edgetech_dict(edgetech_q, accou, rangefile_log)
             if range_dict:
                 # Note: at end of EdgeTech stream
                 #  => range_dict["flag"] in ["TimeoutError", "EOF"]:
@@ -191,15 +211,20 @@ def _get_ranging_dict(
                 obsvn_q.put(range_dict)
 
 
-def _get_next_edgetech_dict(edgetech_q: Queue, accou: dict):
+def _get_next_edgetech_dict(edgetech_q: Queue, accou: dict, rangefile_log: Path):
     """Get next element from queue and process as edgetech sentence."""
     range_dict = {}
     if edgetech_q.empty():
         return range_dict
-    edgetech_str, _ = edgetech_q.get(block=False)
+    edgetech_str, timestamp = edgetech_q.get(block=False)
     if edgetech_str in ["TimeoutError", "EOF"]:
         range_dict["flag"] = edgetech_str
         return range_dict
+
+    if rangefile_log:
+        timestamp = timestamp.strftime("%Y-%m-%dT%H-%M-%S.%f")
+        with open(rangefile_log, "a+", newline="", encoding="utf-8") as rng_file:
+            rng_file.write(f"{timestamp} {edgetech_str}\n")
 
     edgetech_item = edgetech_str.split(" ")
 
@@ -225,7 +250,7 @@ def _get_next_edgetech_dict(edgetech_q: Queue, accou: dict):
     return range_dict
 
 
-def _get_next_nmea_dict(nmea_q: Queue, nmea_next_str: str):
+def _get_next_nmea_dict(nmea_q: Queue, nmea_next_str: str, nmeafile_log: Path):
     """Get next element from queue and process as NMEA sentence."""
     gga = []  # Global Positioning System Fix Data
     # $<TalkerID>GGA,<Timestamp>,<Lat>,<N/S>,<Long>,<E/W>,<GPSQual>,
@@ -251,6 +276,11 @@ def _get_next_nmea_dict(nmea_q: Queue, nmea_next_str: str):
         if nmea_str in ["TimeoutError", "EOF"]:
             nmea_dict["flag"] = nmea_str
             return nmea_dict, nmea_str
+
+        if nmeafile_log:
+            with open(nmeafile_log, "a+", newline="", encoding="utf-8") as nmea_file:
+                nmea_file.write(f"{nmea_str}\n")
+
         if not obsurv.nmea_checksum(nmea_str):
             print(
                 f"!!! Checksum for NMEA line is invalid. Line has "

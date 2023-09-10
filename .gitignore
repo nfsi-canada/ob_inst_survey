@@ -2,4 +2,5 @@
 /data
 /tcp_client.py
 /udp_server.py
+**/test*
 **/__pycache__

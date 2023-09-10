@@ -4,7 +4,7 @@ connects to a serial data stream from an EdgeTech deckbox.
 Or will simulate the same by replaying previously recorded text files. One
 containing NMEA data and the other containing EdgeTech ranging responses.
 It then populates the specified Queue with a dict for each range response. This
-disct will contain a union of NMEA and Range data fields.
+dict will contain a union of NMEA and Range data fields.
 """
 from dataclasses import dataclass
 from datetime import datetime
@@ -174,7 +174,7 @@ def _get_ranging_dict(
     # the first NMEA record before starting Edgetech file replay to provide
     # syncronisation.
     while nmea_q.empty():
-        sleep(0.001)  # Prevents idle loop from 100% CPU thread usage.
+        sleep(0.000001)  # Prevents idle loop from 100% CPU thread usage.
     nmea_str = nmea_q.get()
     nmea_dict, nmea_next_str = _get_next_nmea_dict(nmea_q, nmea_str, nmeafile_log)
 
@@ -191,7 +191,7 @@ def _get_ranging_dict(
 
     while True:
         if nmea_q.empty():
-            sleep(0.001)  # Prevents idle loop from 100% CPU thread usage.
+            sleep(0.000001)  # Prevents idle loop from 100% CPU thread usage.
         else:
             nmea_dict, nmea_next_str = _get_next_nmea_dict(
                 nmea_q, nmea_next_str, nmeafile_log
@@ -314,7 +314,7 @@ def _get_next_nmea_dict(nmea_q: Queue, nmea_next_str: str, nmeafile_log: Path):
             hdt = nmea_msg
 
         if nmea_q.empty():
-            sleep(0.001)  # Prevents idle loop from 100% CPU thread usage.
+            sleep(0.000001)  # Prevents idle loop from 100% CPU thread usage.
         else:
             nmea_str = nmea_q.get(block=False)
 

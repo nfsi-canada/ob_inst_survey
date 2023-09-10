@@ -52,14 +52,6 @@ def __nmea_from_file(
                 timestamp_delta = timedelta(seconds=secs)
                 if not timestamp_date:
                     timestamp_date = datetime(1900, 1, 1)
-                    # if timestamp_start:
-                    #     timestamp_date = set_timestamp_date(
-                    #         timestamp_curr, timestamp_start
-                    #     )
-                    # else:
-                    #     timestamp_date = set_timestamp_date(
-                    #         timestamp_curr, actltime_start
-                    #     )
                 timestamp_curr = timestamp_date + timestamp_delta
                 if not timestamp_start:
                     timestamp_start = timestamp_curr
@@ -71,7 +63,7 @@ def __nmea_from_file(
 
                 while True:
                     # Pause until time for next NMEA sentence
-                    sleep(0.001)  # Prevents idle loop from 100% CPU thread usage.
+                    sleep(0.000001)  # Prevents idle loop from 100% CPU thread usage.
                     actltime_diff = (datetime.now() - actltime_start) * spd_fctr
                     if actltime_diff >= timestamp_diff:
                         break

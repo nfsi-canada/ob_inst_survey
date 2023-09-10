@@ -8,6 +8,9 @@ import re
 from threading import Thread
 from time import sleep
 
+# Correction in seconds to add to timestamps to bring in line with UTC.
+TIMESTAMP_OFFSET: int = -45
+
 
 def etech_replay_textfile(
     filename: str,
@@ -61,7 +64,7 @@ def __etech_from_file(
                 + timestamp_curr.minute * 60
                 + timestamp_curr.second
                 + timestamp_curr.microsecond / 10e6
-            )
+            ) + TIMESTAMP_OFFSET
             timestamp_delta = timedelta(seconds=secs)
             if not timestamp_date:
                 timestamp_date = datetime(1900, 1, 1)
@@ -80,7 +83,7 @@ def __etech_from_file(
 
             while True:
                 # Pause until time for next EdgeTech sentence
-                sleep(0.001)  # Prevents idle loop from 100% CPU thread usage.
+                sleep(0.000001)  # Prevents idle loop from 100% CPU thread usage.
                 actltime_diff = (datetime.now() - actltime_start) * spd_fctr
                 if actltime_diff >= timestamp_diff:
                     break

@@ -41,6 +41,17 @@ def replay2files_parser(
         type=Path,
     )
     infile_group.add_argument(
+        "--timestampoffset",
+        help=(
+            "If NMEA and Range files are not time synced, specify number of "
+            "seconds to offset the ranging timestamp to bring in sync with NMEA. "
+            "(If Ranging timestamp is ahead of NMEA timestamp value should "
+            "be negative, otherwise positive.) Default: 0.0"
+        ),
+        default=0.0,
+        type=float,
+    )
+    infile_group.add_argument(
         "--replaystart",
         help=(
             "Starting time (UTC) of the file to be replayed. "
@@ -115,6 +126,21 @@ def out_fileprefix_parser(dflt_fileprefix: str):
         ),
         default=dflt_fileprefix,
         type=str,
+    )
+    return parser
+
+
+def lograw_parser():
+    """Returns parser for lograw switch"""
+    parser = ArgumentParser(add_help=False)
+    parser.add_argument(
+        "--lograw",
+        help=(
+            "Option to additionally log raw NMEA and Range data to files in "
+            "subdirectories of the provided <outfile_path>."
+        ),
+        action="store_true",
+        default=False,
     )
     return parser
 
@@ -209,6 +235,23 @@ def edgetech_arg_parser(
         type=int,
         help=f"Speed of sound in water (typical 1450 to 1570 m/sec). Default: {etech_conn.snd_spd}",
         default=etech_conn.snd_spd,
+    )
+    return parser
+
+
+def apriori_coord_parser():
+    """Returns parser for apriori coordinate"""
+    parser = ArgumentParser(add_help=False)
+    parser.add_argument(
+        "--startcoord",
+        help=(
+            "Specify the start or apriori coordinate. Format is three space "
+            "seperated floats <Lon> <Lat> <Depth> where Lat & Lon are decimal "
+            "degrees, and Depth is metres below MSL."
+        ),
+        default=None,
+        nargs=3,
+        type=float,
     )
     return parser
 

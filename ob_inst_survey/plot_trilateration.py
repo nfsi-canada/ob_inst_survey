@@ -5,68 +5,55 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from pyproj import Transformer
-from pyproj.crs import ProjectedCRS
 from pyproj.crs.coordinate_operation import TransverseMercatorConversion
 
 
-def init_plot_trilateration(title: str = "Ranging Survey") -> plt.figure:
+def init_plot_trilateration() -> plt.figure:
     plt.ion()
     plt.rcParams["font.family"] = "sans-serif"
     fig = plt.figure(
+        figsize=(8, 8),
         layout="constrained",
     )
-    fig.suptitle(title)
     return fig
 
 
 def plot_trilateration(
     fig: plt.figure,
     final_coord: pd.Series,
+    apriori_coord: pd.Series,
     observations: pd.DataFrame,
     plotfile_path: Path = None,
     plotfile_name: str = None,
+    title: str = "Ranging Survey",
 ):
     plotfile: Path = None
     if plotfile_path and plotfile_name:
         plotfile = plotfile_path / f"{plotfile_name}.png"
 
     plt.clf()
-    # Transform to Transverse Mercator
+    # Define Transverse Mercator
     local_tm = TransverseMercatorConversion(
-        latitude_natural_origin=final_coord["latDec"],
-        longitude_natural_origin=final_coord["lonDec"],
+        latitude_natural_origin=apriori_coord["latDec"],
+        longitude_natural_origin=apriori_coord["lonDec"],
         false_easting=0.0,
         false_northing=0.0,
         scale_factor_natural_origin=1.0,
     )
-    proj_local_tm = ProjectedCRS(
-        conversion=local_tm,
-        geodetic_crs="EPSG:4979",
-    )
-    trans_geod_to_tm = Transformer.from_crs("EPSG:4979", proj_local_tm, always_xy=True)
 
-    (
-        observations["mE"],
-        observations["mN"],
-    ) = trans_geod_to_tm.transform(xx=observations.lonDec, yy=observations.latDec)
     used_obs_df = observations.loc[~observations["outlier"]]
     excl_obs_df = observations.loc[observations["outlier"]]
 
-    (
-        final_coord["mE"],
-        final_coord["mN"],
-    ) = trans_geod_to_tm.transform(xx=final_coord.lonDec, yy=final_coord.latDec)
-
     # Generate plot
     local_tm = ccrs.TransverseMercator(
-        central_longitude=final_coord["lonDec"],
-        central_latitude=final_coord["latDec"],
+        central_longitude=apriori_coord["lonDec"],
+        central_latitude=apriori_coord["latDec"],
         false_easting=0.0,
         false_northing=0.0,
         scale_factor=1.0,
     )
     ax1 = plt.axes(projection=local_tm)
+    ax1.set_title(title, fontweight="bold")
     ax1.plot(
         observations["mE"],
         observations["mN"],
@@ -104,15 +91,88 @@ def plot_trilateration(
         label="Surveyed",
     )
 
+    err_circle_plot_scale = 100
     err_circle = plt.Circle(
         (final_coord.mE, final_coord.mN),
-        final_coord["stdErr"] * 100,
+        final_coord["stdErr"] * err_circle_plot_scale,
         fill=False,
         edgecolor="green",
         linewidth=0.5,
         linestyle="--",
     )
     ax1.add_artist(err_circle)
+
+    ax1.plot(
+        apriori_coord.mE,
+        apriori_coord.mN,
+        marker="x",
+        markersize=5,
+        color="magenta",
+        linestyle="",
+        label="Apriori",
+    )
+
+    drift_text = (
+        f"Drift:\n"
+        f"{final_coord['driftBrg']:03.0f}°\n"
+        f"{final_coord['driftDist']:3.1f}m"
+    )
+    if final_coord["driftBrg"] <= 180:
+        txt_brg = final_coord["driftBrg"]
+        txt_align = "right"
+    else:
+        txt_brg = final_coord["driftBrg"] - 180
+        txt_align = "left"
+    txt_angle = 90 - txt_brg
+    offset_angle = 270 - final_coord["driftBrg"]
+    ax1.annotate(
+        drift_text,
+        xy=(apriori_coord.mE, apriori_coord.mN),
+        xycoords="data",
+        horizontalalignment=txt_align,
+        verticalalignment="center",
+        multialignment=txt_align,
+        textcoords="offset points",
+        xytext=(pol2rect(5, offset_angle)),
+        rotation_mode="anchor",
+        rotation=txt_angle,
+        fontfamily="monospace",
+        fontsize="small",
+    )
+
+    result_text = (
+        f"Surveyed Location:\n"
+        f"Lat:  {to_degmin(final_coord['latDec'])}\n"
+        f"Lon:  {to_degmin(final_coord['lonDec'])}\n"
+        f"Depth: {-final_coord['htAmsl']:3.1f}m\n"
+        f"Error: {final_coord['stdErr']:3.1f}m\n"
+        f"Error circle plotted x{err_circle_plot_scale:d}"
+    )
+    ax1.text(
+        -2000,
+        -2000,
+        result_text,
+        horizontalalignment="left",
+        multialignment="left",
+        fontfamily="monospace",
+        fontsize="small",
+    )
+
+    apriori_text = (
+        f"Apriori Location:\n"
+        f"Lat:  {to_degmin(apriori_coord['latDec'])}\n"
+        f"Lon:  {to_degmin(apriori_coord['lonDec'])}\n"
+        f"Depth: {-apriori_coord['htAmsl']:3.1f}m"
+    )
+    ax1.text(
+        2000,
+        -2000,
+        apriori_text,
+        horizontalalignment="right",
+        multialignment="left",
+        fontfamily="monospace",
+        fontsize="small",
+    )
 
     ax1.legend(loc="upper left")
     ax1.set_extent(
@@ -189,3 +249,27 @@ def to_dms(dec_deg: float) -> str:
     mins = np.trunc((dec_deg - deg) * 60)
     sec = (dec_deg - deg - mins / 60) * 3600
     return f"{deg: 04.0f}°{abs(mins):02.0f}'{abs(sec):2.3f}\""
+
+
+def to_degmin(dec_deg: float) -> str:
+    """
+    Convert decimal degrees to a string representation formatted as
+    DDD°MM.MMM'
+    """
+    deg = np.trunc(dec_deg)
+    mins = (dec_deg - deg) * 60
+    return f"{deg: 4.0f}°{abs(mins):06.3f}'"
+
+
+def pol2rect(distance, bearing):
+    x = distance * np.cos(np.radians(bearing))
+    y = distance * np.sin(np.radians(bearing))
+    return (x, y)
+
+
+def rect2pol(x, y):
+    distance = np.sqrt(x**2 + y**2)
+    bearing = np.degrees(np.arctan2(y, x))
+    if bearing < 0:
+        bearing += 360
+    return (distance, bearing)

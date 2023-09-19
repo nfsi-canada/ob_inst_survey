@@ -38,11 +38,9 @@ def main():
     log.info("Observations used in determining surveyed coord:\n%s", all_obs_df)
     log.info("Final coordinate Series:\n%s", final_coord)
 
-    fig = obsurv.init_plot_trilateration(title=f"{obsvn_file}")
+    fig = obsurv.init_plot_trilateration()
     obsurv.plot_trilateration(
-        fig=fig,
-        final_coord=final_coord,
-        observations=all_obs_df,
+        fig=fig, final_coord=final_coord, observations=all_obs_df, title=f"{obsvn_file}"
     )
 
     input("Press <Enter> to close plot.")

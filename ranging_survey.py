@@ -2,43 +2,20 @@
 Log NMEA & Ranging data streams to a combined CSV text file.
 """
 from argparse import ArgumentParser
-import csv
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from queue import Queue
+import re
 from time import sleep
 
+import numpy as np
 import pandas as pd
+from pyproj import Transformer
+from pyproj.crs import ProjectedCRS
+from pyproj.crs.coordinate_operation import TransverseMercatorConversion
 
 import ob_inst_survey as obsurv
 
-
-OBSVN_COLS = (
-    "utcTime",
-    "rangeTime",
-    "range",
-    "lat",
-    "latDec",
-    "lon",
-    "lonDec",
-    "qlty",
-    "noSats",
-    "hdop",
-    "htAmsl",
-    "htAmslUnit",
-    "geiodSep",
-    "geiodSepUnit",
-    "cog",
-    "sogKt",
-    "heading",
-    "roll",
-    "pitch",
-    "heave",
-    "turnTime",
-    "sndSpd",
-    "tx",
-    "rx",
-)
 
 DISPLAY_COLS = (
     "utcTime",
@@ -51,9 +28,10 @@ DISPLAY_COLS = (
     "heading",
 )
 
-STARTTIME = datetime.now()
-TIMESTAMP_START = STARTTIME.strftime("%Y-%m-%d_%H-%M")
-DFLT_PREFIX = "RANGELOG"
+TIMEZONE = +13
+STARTTIME = datetime.now() - timedelta(hours=TIMEZONE)
+timestamp_start = STARTTIME.strftime("%Y-%m-%d_%H-%M")
+DFLT_PREFIX = "RANGINGSURVEY"
 DFLT_PATH = Path.home() / "logs/"
 ACCOU_TURNTIME = 12.5  # millisec
 ACCOU_SPD = 1500  # m/sec
@@ -70,7 +48,9 @@ def main():
     # Retrieve CLI arguments.
     helpdesc: str = (
         "Receives an NMEA data stream via UDP or TCP, and a serial data stream "
-        "from an EdgeTech deckbox. Alternatively these streams can be simulated "
+        "from an EdgeTech deckbox. As each new observation is receievd the surveyed "
+        "coordinate will be recalculated by trilateration and a plot will be updated "
+        "to both screen and file. Alternatively these streams can be simulated "
         "by replaying previously recorded text files (one containing NMEA data "
         "and the other containing EdgeTech ranging responses).\n"
         "For every range response received a record will be logged to a text "
@@ -80,28 +60,20 @@ def main():
         parents=[
             obsurv.out_filepath_parser(DFLT_PATH),
             obsurv.out_fileprefix_parser(DFLT_PREFIX),
+            obsurv.lograw_parser(),
             obsurv.ip_arg_parser(ip_param),
             obsurv.edgetech_arg_parser(etech_param),
             obsurv.replay2files_parser(None),
+            obsurv.apriori_coord_parser(),
         ],
         description=helpdesc,
     )
-    parser.add_argument(
-        "--lograw",
-        help=(
-            "Option to additionally log raw NMEA and Range data to files in "
-            "subdirectories of the provided <outfile_path>."
-        ),
-        action="store_true",
-        default=False,
-    )
     args = parser.parse_args()
-    outfile_path: Path = args.outfilepath
-    outfile_name: str = f"{args.outfileprefix}_{TIMESTAMP_START}"
-    outfile_log: str = outfile_path / f"{outfile_name}.csv"
-    rawfile_path = None
-    if args.lograw:
-        rawfile_path = outfile_path
+    if args.startcoord:
+        apriori_coord = pd.Series(args.startcoord, ("lonDec", "latDec", "htAmsl"))
+        apriori_coord["htAmsl"] = -apriori_coord["htAmsl"]
+    else:
+        apriori_coord = pd.Series()
     ip_param = obsurv.IpParam(
         port=args.ipport,
         addr=args.ipaddr,
@@ -121,10 +93,50 @@ def main():
     replay_rngfile: Path = args.replayrange
     replay_start: datetime = args.replaystart
     replay_speed: float = args.replayspeed
+    timestamp_offset: float = args.timestampoffset
+
+    if not (replay_rngfile and replay_nmeafile):
+        timestamp_start = STARTTIME.strftime("%Y-%m-%d_%H-%M")
+    else:
+        with open(replay_rngfile, encoding="utf-8") as etech_file:
+            while True:
+                sentence = etech_file.readline()
+                try:
+                    # Attempt to extract the timestamp from the beginning of first
+                    # senetence of the file replay.
+                    timestamp_pattern = (
+                        r"^\d{4}[:_-]\d{2}[:_-]\d{2}[Tt :_-]"
+                        r"\d{2}[:_-]\d{2}[:_-]\d{2}\.\d{0,6}"
+                    )
+                    timestamp = re.match(timestamp_pattern, sentence).group()
+                    timestamp = re.sub(r"[Tt :_-]", r"_", timestamp)
+                    timestamp = datetime.strptime(timestamp, r"%Y_%m_%d_%H_%M_%S.%f")
+                    timestamp = (
+                        timestamp
+                        - timedelta(hours=TIMEZONE)
+                        + timedelta(seconds=timestamp_offset)
+                    )
+                    timestamp_start = timestamp.strftime("%Y-%m-%d_%H-%M")
+
+                    break
+                except AttributeError:
+                    # If no valid timestamp continue with next response line.
+                    pass
+
+    outfile_path: Path = args.outfilepath
+    outfile_name: str = f"{args.outfileprefix}_{timestamp_start}"
+    obsfile_name: str = f"{outfile_name}_OBSVNS"
+    obsfile_log: str = outfile_path / f"{obsfile_name}.csv"
+    rsltfile_name: str = f"{outfile_name}_RESULT"
+    rsltfile_log: str = outfile_path / f"{rsltfile_name}.csv"
+    if args.lograw:
+        rawfile_path = outfile_path
+    else:
+        rawfile_path = None
 
     # Create directories for logging (included raw NMEA and Ranging streams).
     outfile_path.mkdir(parents=True, exist_ok=True)
-    print(f"Logging survey observations to {outfile_log}")
+    print(f"Logging survey observations to {obsfile_log}")
 
     # Initiate NMEA and Ranging data streams to the observation queue.
     obsvn_q: Queue[dict] = Queue()
@@ -136,17 +148,15 @@ def main():
         etech_filename=replay_rngfile,
         replay_start=replay_start,
         spd_fctr=replay_speed,
+        timestamp_offset=timestamp_offset,
         rawfile_path=rawfile_path,
         rawfile_prefix=args.outfileprefix,
     )
 
-    fig = obsurv.init_plot_trilateration(title="Trilateration")
+    figure_displayed = False
 
     print(",".join(DISPLAY_COLS))
     obsvn_df = pd.DataFrame()
-    with open(outfile_log, "a+", newline="", encoding="utf-8") as csvfile:
-        logwriter = csv.DictWriter(csvfile, delimiter=",", fieldnames=OBSVN_COLS)
-        logwriter.writeheader()
 
     # Main survey loop.
     try:
@@ -172,19 +182,11 @@ def main():
                 display_vals.append(f'{result_dict["sogKt"]:4.1f}')
             except TypeError:
                 display_vals.extend([" " * 6, " " * 4])
-            display_vals.append(f'{result_dict["heading"]:06.2f}')
+            try:
+                display_vals.append(f'{result_dict["heading"]:06.2f}')
+            except TypeError:
+                display_vals.append(" " * 6)
             print(", ".join(display_vals))
-
-            # display_vals = [result_dict[key] for key in DISPLAY_COLS]
-            # print(str(display_vals).strip("[]"))
-
-            # Save values to log file
-            save_dict = {key: result_dict[key] for key in OBSVN_COLS}
-            with open(outfile_log, "a+", newline="", encoding="utf-8") as csvfile:
-                logwriter = csv.DictWriter(
-                    csvfile, delimiter=",", fieldnames=OBSVN_COLS
-                )
-                logwriter.writerow(save_dict)
 
             next_record = pd.DataFrame.from_dict([result_dict])
             obsvn_df = pd.concat(
@@ -192,19 +194,85 @@ def main():
                 axis="rows",
                 ignore_index=True,
             )
-            apriori_coord = None
-            final_coord, all_obs_df = obsurv.trilateration(obsvn_df, apriori_coord)
+            final_coord, apriori_returned, all_obs_df = obsurv.trilateration(
+                obsvn_df, apriori_coord
+            )
 
+            # Plot the result figure and update it any time a result coordinate
+            # is available.
             if not final_coord.empty:
+                if not figure_displayed:
+                    fig = obsurv.init_plot_trilateration()
+                    figure_displayed = True
+
+                # Transform to Transverse Mercator
+                local_tm = TransverseMercatorConversion(
+                    latitude_natural_origin=apriori_coord["latDec"],
+                    longitude_natural_origin=apriori_coord["lonDec"],
+                    false_easting=0.0,
+                    false_northing=0.0,
+                    scale_factor_natural_origin=1.0,
+                )
+
+                proj_local_tm = ProjectedCRS(
+                    conversion=local_tm,
+                    geodetic_crs="EPSG:4979",
+                )
+                trans_geod_to_tm = Transformer.from_crs(
+                    "EPSG:4979", proj_local_tm, always_xy=True
+                )
+
+                (
+                    all_obs_df["mE"],
+                    all_obs_df["mN"],
+                ) = trans_geod_to_tm.transform(
+                    xx=all_obs_df.lonDec, yy=all_obs_df.latDec
+                )
+
+                (
+                    final_coord["mE"],
+                    final_coord["mN"],
+                ) = trans_geod_to_tm.transform(
+                    xx=final_coord.lonDec, yy=final_coord.latDec
+                )
+
+                (
+                    apriori_coord["mE"],
+                    apriori_coord["mN"],
+                ) = trans_geod_to_tm.transform(
+                    xx=apriori_coord.lonDec, yy=apriori_coord.latDec
+                )
+
+                final_coord["aprLon"] = apriori_coord["lonDec"]
+                final_coord["aprLat"] = apriori_coord["latDec"]
+                final_coord["aprHt"] = apriori_coord["htAmsl"]
+                final_coord["driftDist"], final_coord["driftBrg"] = rect2pol(
+                    final_coord["mN"] - apriori_coord["mN"],
+                    final_coord["mE"] - apriori_coord["mE"],
+                )
+                final_coord.to_frame().T.to_csv(rsltfile_log, index=False)
                 obsurv.plot_trilateration(
                     fig=fig,
+                    apriori_coord=apriori_returned,
                     final_coord=final_coord,
                     observations=all_obs_df,
                     plotfile_path=outfile_path,
                     plotfile_name=outfile_name,
+                    title=f"{args.outfileprefix} {timestamp_start}",
                 )
+
+            all_obs_df.to_csv(obsfile_log, index=False)
+
     except KeyboardInterrupt:
         print("*** Ranging survey ended. ***")
+
+
+def rect2pol(x, y):
+    distance = np.sqrt(x**2 + y**2)
+    bearing = np.degrees(np.arctan2(y, x))
+    if bearing < 0:
+        bearing += 360
+    return (distance, bearing)
 
 
 if __name__ == "__main__":

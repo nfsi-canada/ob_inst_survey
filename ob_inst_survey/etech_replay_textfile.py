@@ -8,8 +8,7 @@ import re
 from threading import Thread
 from time import sleep
 
-# Correction in seconds to add to timestamps to bring in line with UTC.
-TIMESTAMP_OFFSET: int = -45
+TIMEZONE = +13
 
 
 def etech_replay_textfile(
@@ -18,11 +17,19 @@ def etech_replay_textfile(
     actltime_start: datetime = None,
     timestamp_start: datetime = None,
     spd_fctr: int = 1,
+    timestamp_offset: int = 0,
 ):
     """Initiate a queue simulating an EdgeTech data stream from a text file."""
     Thread(
         target=__etech_from_file,
-        args=(filename, edgetech_q, actltime_start, timestamp_start, spd_fctr),
+        args=(
+            filename,
+            edgetech_q,
+            actltime_start,
+            timestamp_start,
+            spd_fctr,
+            timestamp_offset,
+        ),
         daemon=True,
     ).start()
 
@@ -33,6 +40,7 @@ def __etech_from_file(
     actltime_start: datetime,
     timestamp_start: datetime,
     spd_fctr: int,
+    timestamp_offset: int = 0,
 ):
     timestamp_prev = timestamp_start
     timestamp_date = None
@@ -53,7 +61,7 @@ def __etech_from_file(
                 timestamp_curr = datetime.strptime(
                     timestamp_curr, r"%Y_%m_%d_%H_%M_%S.%f"
                 )
-                timestamp_curr = timestamp_curr + timedelta(hours=-13)
+                timestamp_curr = timestamp_curr - timedelta(hours=TIMEZONE)
             except AttributeError:
                 # If no valid timestamp continue with next response line.
                 continue
@@ -64,7 +72,7 @@ def __etech_from_file(
                 + timestamp_curr.minute * 60
                 + timestamp_curr.second
                 + timestamp_curr.microsecond / 10e6
-            ) + TIMESTAMP_OFFSET
+            ) + timestamp_offset
             timestamp_delta = timedelta(seconds=secs)
             if not timestamp_date:
                 timestamp_date = datetime(1900, 1, 1)

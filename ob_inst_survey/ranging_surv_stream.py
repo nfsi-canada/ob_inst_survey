@@ -68,6 +68,7 @@ def ranging_survey_stream(
     etech_filename: Path = None,
     replay_start: datetime = None,
     spd_fctr: float = 1,
+    timestamp_offset: float = 0.0,
     rawfile_path: Path = None,
     rawfile_prefix: str = None,
 ):
@@ -101,11 +102,11 @@ def ranging_survey_stream(
     nmeafile_log = None
     if rawfile_path:
         rangefile_log: str = (
-            rawfile_path / f"rng/{rawfile_prefix}_RNG_{TIMESTAMP_START}.txt"
+            rawfile_path / f"rng/{rawfile_prefix}_{TIMESTAMP_START}_RNG.txt"
         )
         rangefile_log.parents[0].mkdir(parents=True, exist_ok=True)
         nmeafile_log: str = (
-            rawfile_path / f"nmea/{rawfile_prefix}_NMEA_{TIMESTAMP_START}.txt"
+            rawfile_path / f"nmea/{rawfile_prefix}_{TIMESTAMP_START}_NMEA.txt"
         )
         nmeafile_log.parents[0].mkdir(parents=True, exist_ok=True)
 
@@ -119,6 +120,7 @@ def ranging_survey_stream(
             etech_filename,
             replay_start,
             spd_fctr,
+            timestamp_offset,
             rangefile_log,
             nmeafile_log,
         ),
@@ -134,6 +136,7 @@ def _get_ranging_dict(
     etech_filename: Path,
     replay_start: datetime,
     spd_fctr: float,
+    timestamp_offset: float,
     rangefile_log: Path,
     nmeafile_log: Path,
 ):
@@ -184,7 +187,12 @@ def _get_ranging_dict(
         if not replay_start:
             replay_start = datetime.strptime(nmea_dict["utcTime"], "%H:%M:%S.%f")
         obsurv.etech_replay_textfile(
-            etech_filename, edgetech_q, STARTTIME, replay_start, spd_fctr
+            etech_filename,
+            edgetech_q,
+            STARTTIME,
+            replay_start,
+            spd_fctr,
+            timestamp_offset,
         )
     else:
         obsurv.etech_serial_stream(etech_conn, edgetech_q)

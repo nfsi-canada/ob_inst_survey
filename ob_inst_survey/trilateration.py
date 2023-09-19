@@ -8,8 +8,8 @@ from scipy.optimize import least_squares
 
 def trilateration(
     obsvns: pd.DataFrame,
-    apriori_coord: tuple[float, float, float] = None,
-) -> (pd.Series, pd.DataFrame):
+    apriori_coord: pd.Series = pd.Series(),
+) -> (pd.Series, pd.Series, pd.DataFrame):
     log = logging.getLogger(__name__)
     log.setLevel(logging.DEBUG)
     formatter = logging.Formatter(
@@ -25,7 +25,7 @@ def trilateration(
             "A minimum of three range observations are required to "
             "compute a surveyed location."
         )
-        return (pd.DataFrame(), obsvns)
+        return (pd.DataFrame(), pd.DataFrame(), obsvns)
 
     # Define transformations
     trans_geoctrc_to_geod = Transformer.from_crs(
@@ -35,25 +35,48 @@ def trilateration(
         "EPSG:4979", "EPSG:4978", always_xy=True
     )
 
+    obsvns["outlier"] = False
+    obsvns.loc[obsvns["range"] < 50, "outlier"] = True
+    obsvns["residual"] = None
+    if ~apriori_coord.empty:
+        # If range is more than 1.6x water depth or less than the water depth
+        # then mark as an outlier and exclude from calculation.
+        upper_rng = -apriori_coord["htAmsl"] * 1.6
+        lower_rng = -apriori_coord["htAmsl"] - 100
+        obsvns.loc[obsvns["range"] > upper_rng, "outlier"] = True
+        obsvns.loc[obsvns["range"] < lower_rng, "outlier"] = True
+
     obsvns["X"], obsvns["Y"], obsvns["Z"] = trans_geod_to_geoctrc.transform(
         obsvns["lonDec"], obsvns["latDec"], obsvns["htAmsl"]
     )
 
     mean_crd = obsvns[["X", "Y", "Z"]].mean()
-    if not apriori_coord:
+    if apriori_coord.empty:
         # Assume apriori is the mean observation of all coordinates and is 1000m
         # below observation locations (towards earth ctr).
         earth_ctr_dist = distance_3d((0, 0, 0), mean_crd)
         apriori_coord = mean_crd * ((earth_ctr_dist - 1000) / earth_ctr_dist)
+        (
+            apriori_coord["lonDec"],
+            apriori_coord["latDec"],
+            apriori_coord["htAmsl"],
+        ) = trans_geoctrc_to_geod.transform(
+            apriori_coord["X"], apriori_coord["Y"], apriori_coord["Z"]
+        )
+
+    else:
+        (
+            apriori_coord["X"],
+            apriori_coord["Y"],
+            apriori_coord["Z"],
+        ) = trans_geod_to_geoctrc.transform(
+            apriori_coord["lonDec"], apriori_coord["latDec"], apriori_coord["htAmsl"]
+        )
 
     # Subtract mean coordinate value from all coordinates to minimuse floating
     # point calculation errors.
     obsvns[["X", "Y", "Z"]] = obsvns[["X", "Y", "Z"]] - mean_crd
-    apriori_coord = apriori_coord - mean_crd
-    # log.info("Apriori coordinate:\n%s", apriori_coord)
-    obsvns["outlier"] = False
-    obsvns.loc[obsvns["range"] < 50, "outlier"] = True
-    obsvns["residual"] = None
+    coord_next_iter = apriori_coord[["X", "Y", "Z"]] - mean_crd
     while True:
         # Extract datframes for computation. Exclude any observations marked
         # as outliers.
@@ -65,12 +88,14 @@ def trilateration(
                 "A minimum of three valid range observations are required to "
                 "compute a surveyed location."
             )
-            return (pd.DataFrame(), obsvns)
+            return (pd.DataFrame(), apriori_coord, obsvns)
+
         result = least_squares(
             rms_err,
-            x0=apriori_coord,
+            x0=coord_next_iter[["X", "Y", "Z"]],
             args=(used_obs_df[["X", "Y", "Z"]], used_obs_df["range"]),
         )
+
         log.debug(result)
         obsvns["residual"] = (
             distance_3d(result.x, obsvns[["X", "Y", "Z"]]) - obsvns["range"]
@@ -89,9 +114,7 @@ def trilateration(
         if not (used_obs_df["residual"].abs() >= std_error * 3).any():
             break
 
-        # used_obs_df = obsvns.loc[~obsvns["outlier"]]
-        # excl_obs_df = obsvns.loc[obsvns["outlier"]]
-        apriori_coord = result.x
+        coord_next_iter = pd.Series(result.x, ("X", "Y", "Z"))
 
     obsvns[["X", "Y", "Z"]] = obsvns[["X", "Y", "Z"]] + mean_crd
     final_crd = result.x + mean_crd
@@ -103,7 +126,7 @@ def trilateration(
         final_crd["htAmsl"],
     ) = trans_geoctrc_to_geod.transform(xx=final_crd.X, yy=final_crd.Y, zz=final_crd.Z)
 
-    return (final_crd, obsvns)
+    return (final_crd, apriori_coord, obsvns)
 
 
 def distance_3d(crd1, crd2):

@@ -119,6 +119,7 @@ def main():
     replay_rngfile: Path = args.replayrange
     replay_start: datetime = args.replaystart
     replay_speed: float = args.replayspeed
+    timestamp_offset: float = args.timestampoffset
 
     # Create directories for logging (included raw NMEA and Ranging streams).
     outfile_path.mkdir(parents=True, exist_ok=True)
@@ -134,6 +135,7 @@ def main():
         etech_filename=replay_rngfile,
         replay_start=replay_start,
         spd_fctr=replay_speed,
+        timestamp_offset=timestamp_offset,
         rawfile_path=rawfile_path,
         rawfile_prefix=args.outfileprefix,
     )

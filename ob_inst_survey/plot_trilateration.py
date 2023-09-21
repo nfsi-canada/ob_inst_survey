@@ -9,7 +9,6 @@ from pyproj.crs.coordinate_operation import TransverseMercatorConversion
 
 
 def init_plot_trilateration() -> plt.figure:
-    plt.ion()
     plt.rcParams["font.family"] = "sans-serif"
     fig = plt.figure(
         figsize=(8, 8),

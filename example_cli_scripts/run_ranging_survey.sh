@@ -42,7 +42,7 @@ path_root="/home/nev/scripts/ob_inst_survey/data/logs_TAN2212/"
 # nmea_file="${path_root}nmea/POSMV_2022-10-11_17-30.txt"
 # etech_file="${path_root}raw/raw_edgetech_2022-10-11_17-30.txt"
 
-path_root="/home/nev/scripts/ob_inst_survey/data/logs_TAN2301//"
+path_root="/home/nev/scripts/ob_inst_survey/data/logs_TAN2301/"
 
 # prefix="GNS22-PF2"
 # start="179.1153 -38.2351 2000"

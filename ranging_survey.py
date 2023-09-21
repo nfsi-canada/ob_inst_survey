@@ -30,9 +30,8 @@ DISPLAY_COLS = (
 
 TIMEZONE = +13
 STARTTIME = datetime.now() - timedelta(hours=TIMEZONE)
-timestamp_start = STARTTIME.strftime("%Y-%m-%d_%H-%M")
 DFLT_PREFIX = "RANGINGSURVEY"
-DFLT_PATH = Path.home() / "logs/"
+DFLT_PATH = Path.cwd() / "results/"
 ACCOU_TURNTIME = 12.5  # millisec
 ACCOU_SPD = 1500  # m/sec
 
@@ -98,30 +97,29 @@ def main():
     if not (replay_rngfile and replay_nmeafile):
         timestamp_start = STARTTIME.strftime("%Y-%m-%d_%H-%M")
     else:
-        with open(replay_rngfile, encoding="utf-8") as etech_file:
-            while True:
-                sentence = etech_file.readline()
-                try:
-                    # Attempt to extract the timestamp from the beginning of first
-                    # senetence of the file replay.
-                    timestamp_pattern = (
-                        r"^\d{4}[:_-]\d{2}[:_-]\d{2}[Tt :_-]"
-                        r"\d{2}[:_-]\d{2}[:_-]\d{2}\.\d{0,6}"
-                    )
-                    timestamp = re.match(timestamp_pattern, sentence).group()
-                    timestamp = re.sub(r"[Tt :_-]", r"_", timestamp)
-                    timestamp = datetime.strptime(timestamp, r"%Y_%m_%d_%H_%M_%S.%f")
-                    timestamp = (
-                        timestamp
-                        - timedelta(hours=TIMEZONE)
-                        + timedelta(seconds=timestamp_offset)
-                    )
-                    timestamp_start = timestamp.strftime("%Y-%m-%d_%H-%M")
-
-                    break
-                except AttributeError:
-                    # If no valid timestamp continue with next response line.
-                    pass
+        with open(replay_rngfile, mode="r", encoding="utf-8") as etech_file:
+            etech_lines = etech_file.readlines()
+        for sentence in etech_lines:
+            try:
+                # Attempt to extract the timestamp from the beginning of first
+                # senetence of the file replay.
+                timestamp_pattern = (
+                    r"^\d{4}[:_-]\d{2}[:_-]\d{2}[Tt :_-]"
+                    r"\d{2}[:_-]\d{2}[:_-]\d{2}\.\d{0,6}"
+                )
+                timestamp = re.search(timestamp_pattern, sentence).group()
+                timestamp = re.sub(r"[Tt :_-]", r"_", timestamp)
+                timestamp = datetime.strptime(timestamp, r"%Y_%m_%d_%H_%M_%S.%f")
+                timestamp = (
+                    timestamp
+                    - timedelta(hours=TIMEZONE)
+                    + timedelta(seconds=timestamp_offset)
+                )
+                timestamp_start = timestamp.strftime("%Y-%m-%d_%H-%M")
+                break
+            except AttributeError:
+                # If no valid timestamp continue with next response line.
+                pass
 
     outfile_path: Path = args.outfilepath
     outfile_name: str = f"{args.outfileprefix}_{timestamp_start}"
@@ -197,13 +195,18 @@ def main():
             final_coord, apriori_returned, all_obs_df = obsurv.trilateration(
                 obsvn_df, apriori_coord
             )
+            if apriori_coord.empty:
+                apriori_coord = apriori_coord_returned
+
 
             # Plot the result figure and update it any time a result coordinate
             # is available.
             if not final_coord.empty:
                 if not figure_displayed:
+                    plt.ion()
                     fig = obsurv.init_plot_trilateration()
                     figure_displayed = True
+
 
                 # Transform to Transverse Mercator
                 local_tm = TransverseMercatorConversion(

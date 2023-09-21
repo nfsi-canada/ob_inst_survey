@@ -7,15 +7,26 @@ import re
 
 import ob_inst_survey as obsurv
 
-DFLT_PATH = Path.home()
+DFLT_PATH = Path.cwd() / "out/"
 DFLT_INFILE = None
+
+
+def obsfile_parser():
+    """Returns parser for full path and filename for input file."""
+    parser = ArgumentParser(add_help=False)
+    parser.add_argument(
+        "--obsfile",
+        help=(f"Full path and filename for input observations file location."),
+        type=Path,
+    )
+    return parser
 
 
 def replay2files_parser(
     dflt_nmeareplayfile: Path = DFLT_INFILE,
     dflt_rngreplayfile: Path = DFLT_INFILE,
 ):
-    """Returns parser for full path and filename for input file."""
+    """Returns parser for full path and filename for input files."""
     parser = ArgumentParser(add_help=False)
     infile_group = parser.add_argument_group(
         title=(

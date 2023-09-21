@@ -38,7 +38,7 @@ def trilateration(
     obsvns["outlier"] = False
     obsvns.loc[obsvns["range"] < 50, "outlier"] = True
     obsvns["residual"] = None
-    if ~apriori_coord.empty:
+    if not apriori_coord.empty:
         # If range is more than 1.6x water depth or less than the water depth
         # then mark as an outlier and exclude from calculation.
         upper_rng = -apriori_coord["htAmsl"] * 1.6

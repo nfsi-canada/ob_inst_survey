@@ -63,7 +63,7 @@ def __nmea_from_file(
 
                 while True:
                     # Pause until time for next NMEA sentence
-                    sleep(0.000001)  # Prevents idle loop from 100% CPU thread usage.
+                    # sleep(0.000001)  # Prevents idle loop from 100% CPU thread usage.
                     actltime_diff = (datetime.now() - actltime_start) * spd_fctr
                     if actltime_diff >= timestamp_diff:
                         break

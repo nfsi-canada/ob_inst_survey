@@ -140,20 +140,20 @@ def main():
     )
 
     display_cols = (
-    f'{"utcTime":^12s}',
-    f'{"range":^8s}',
-    f'{"horzntl":^8s}',
-    f'{"depth":^8s}',
-    f'{"rate":^8s}',
-    f'{"eta_min":^6s}',
-    f'{"eta_time":^8s}',
-    f'{"towards":^8s}',
-    f'{"lat":^14s}',
-    f'{"lon":^14s}',
-    f'{"cog":^6s}',
-    f'{"sogKt":^5s}',
-    f'{"heading":^6s}',
-)
+        f'{"utcTime":^12s}',
+        f'{"range":^8s}',
+        f'{"horzntl":^8s}',
+        f'{"depth":^8s}',
+        f'{"rate":^8s}',
+        f'{"eta_min":^6s}',
+        f'{"eta_time":^8s}',
+        f'{"towards":^8s}',
+        f'{"lat":^14s}',
+        f'{"lon":^14s}',
+        f'{"cog":^6s}',
+        f'{"sogKt":^5s}',
+        f'{"heading":^6s}',
+    )
     print(", ".join(display_cols))
 
     obsvn_df = pd.DataFrame()
@@ -171,9 +171,8 @@ def main():
                 break
 
             # If range is less than 50m or more than 1.6x water depth then flag.
-            if (
-                curr_record["range"] < 50 or
-                curr_record["range"] > (-apriori_coord["htAmsl"] * 1.6)
+            if curr_record["range"] < 50 or curr_record["range"] > (
+                -apriori_coord["htAmsl"] * 1.6
             ):
                 bad_range = True
             else:
@@ -205,12 +204,15 @@ def main():
             )
 
             curr_record["dist"], curr_record["bearing"] = rect2pol(
-                curr_record["mN"]-apriori_coord["mN"],
-                curr_record["mE"]-apriori_coord["mE"],
+                curr_record["mN"] - apriori_coord["mN"],
+                curr_record["mE"] - apriori_coord["mE"],
             )
 
             if not bad_range:
-                curr_record["depth"] = vert_depth(curr_record["range"], curr_record["dist"],)
+                curr_record["depth"] = vert_depth(
+                    curr_record["range"],
+                    curr_record["dist"],
+                )
             else:
                 curr_record["depth"] = None
 
@@ -258,7 +260,7 @@ def main():
 
             # Display summary values to screen
             display_vals = []
-            display_vals.append(f'{curr_record["utcTime"]:>12s}')
+            display_vals.append(f'{curr_record["utcTime"]:<12s}')
             display_vals.append(f'{curr_record["range"]:8.2f}')
             display_vals.append(f'{curr_record["dist"]:8.2f}')
             if curr_record["depth"]:
@@ -269,9 +271,9 @@ def main():
                 display_vals.append(f'{curr_record["rate_mpsec"]*60:8.2f}')
             else:
                 display_vals.append(f'{"":>8s}')
-            display_vals.append(f'{eta_mins:>7s}')
+            display_vals.append(f"{eta_mins:>7s}")
             display_vals.append(f'{curr_record["eta_time"]:>8s}')
-            display_vals.append(f'{direction:>8s}')
+            display_vals.append(f"{direction:>8s}")
             display_vals.append(f'{curr_record["lat"]:>14s}')
             display_vals.append(f'{curr_record["lon"]:>14s}')
             try:
@@ -291,7 +293,6 @@ def main():
                     f"range, try again."
                 )
 
-
     except KeyboardInterrupt:
         print("*** Ranging survey ended. ***")
 
@@ -307,7 +308,8 @@ def rect2pol(x, y):
 
 def vert_depth(slant_range, horz):
     """Compute vertical depth from given slant range and horizontal distance."""
-    return (slant_range**2 - horz**2)**0.5
+    return (slant_range**2 - horz**2) ** 0.5
+
 
 if __name__ == "__main__":
     main()

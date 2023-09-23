@@ -8,6 +8,7 @@ from queue import Queue
 import re
 from time import sleep
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from pyproj import Transformer
@@ -16,17 +17,6 @@ from pyproj.crs.coordinate_operation import TransverseMercatorConversion
 
 import ob_inst_survey as obsurv
 
-
-DISPLAY_COLS = (
-    "utcTime",
-    "rangeTime",
-    "range",
-    "lat",
-    "lon",
-    "cog",
-    "sogKt",
-    "heading",
-)
 
 TIMEZONE = +13
 STARTTIME = datetime.now() - timedelta(hours=TIMEZONE)
@@ -153,7 +143,18 @@ def main():
 
     figure_displayed = False
 
-    print(",".join(DISPLAY_COLS))
+    display_cols = (
+        f'{"utcTime":^12s}',
+        f'{"rngTime":^7s}',
+        f'{"range":^8s}',
+        f'{"lat":^14s}',
+        f'{"lon":^14s}',
+        f'{"cog":^6s}',
+        f'{"sogKt":^5s}',
+        f'{"heading":^6s}',
+    )
+    print(", ".join(display_cols))
+
     obsvn_df = pd.DataFrame()
 
     # Main survey loop.
@@ -170,16 +171,16 @@ def main():
 
             # Display summary values to screen
             display_vals = []
-            display_vals.append(result_dict["utcTime"])
-            display_vals.append(f'{result_dict["rangeTime"]:6.3f}')
+            display_vals.append(f'{result_dict["utcTime"]:<12s}')
+            display_vals.append(f'{result_dict["rangeTime"]:7.3f}')
             display_vals.append(f'{result_dict["range"]:8.2f}')
-            display_vals.append(result_dict["lat"])
-            display_vals.append(result_dict["lon"])
+            display_vals.append(f'{result_dict["lat"]:>14s}')
+            display_vals.append(f'{result_dict["lon"]:>14s}')
             try:
                 display_vals.append(f'{result_dict["cog"]:06.2f}')
-                display_vals.append(f'{result_dict["sogKt"]:4.1f}')
+                display_vals.append(f'{result_dict["sogKt"]:5.1f}')
             except TypeError:
-                display_vals.extend([" " * 6, " " * 4])
+                display_vals.extend([" " * 6, " " * 5])
             try:
                 display_vals.append(f'{result_dict["heading"]:06.2f}')
             except TypeError:
@@ -196,8 +197,7 @@ def main():
                 obsvn_df, apriori_coord
             )
             if apriori_coord.empty:
-                apriori_coord = apriori_coord_returned
-
+                apriori_coord = apriori_returned
 
             # Plot the result figure and update it any time a result coordinate
             # is available.
@@ -206,7 +206,6 @@ def main():
                     plt.ion()
                     fig = obsurv.init_plot_trilateration()
                     figure_displayed = True
-
 
                 # Transform to Transverse Mercator
                 local_tm = TransverseMercatorConversion(

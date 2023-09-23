@@ -199,7 +199,7 @@ def _get_ranging_dict(
 
     while True:
         if nmea_q.empty():
-            # sleep(0.000001)  # Prevents idle loop from 100% CPU thread usage.
+            sleep(0.000001)  # Prevents idle loop from 100% CPU thread usage.
             pass
         else:
             nmea_dict, nmea_next_str = _get_next_nmea_dict(
@@ -323,7 +323,7 @@ def _get_next_nmea_dict(nmea_q: Queue, nmea_next_str: str, nmeafile_log: Path):
             hdt = nmea_msg
 
         if nmea_q.empty():
-            # sleep(0.000001)  # Prevents idle loop from 100% CPU thread usage.
+            sleep(0.000001)  # Prevents idle loop from 100% CPU thread usage.
             pass
         else:
             nmea_str = nmea_q.get(block=False)

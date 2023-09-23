@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 
-# python ../log_etech_to_file.py \
+# python ~/scripts/ob_inst_survey/log_etech_to_file.py \
 # --serport COM5 \
 # --serbaud 9600 \
 # --serparity N \
@@ -9,11 +9,11 @@
 # --outfilepath ~/logs/etech/ \
 # --outfileprefix EdgeTech
 
-python ../log_etech_to_file.py \
---replayfile ../data/logs_TAN2301/raw/raw_edgetech_2023-01-06_12-23.txt \
+python ~/scripts/ob_inst_survey/log_etech_to_file.py \
+--replayfile ~/scripts/ob_inst_survey/data/logs_TAN2301/raw/raw_edgetech_2023-01-06_12-23.txt \
 --replayspeed 100 \
 --outfilepath ~/logs/etech/ \
 --outfileprefix EdgeTech
 # --replaystart "2023-01-06_12:19:47" \
 
-# python ../log_etech_to_file.py -h
+# python ~/scripts/ob_inst_survey/log_etech_to_file.py -h

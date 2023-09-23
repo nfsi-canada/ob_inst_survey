@@ -79,7 +79,7 @@ start="178.41928 -38.896667 1187"
 nmea_file="${path_root}nmea/POSMV_2023-01-06_07-24.txt"
 etech_file="${path_root}raw/raw_edgetech_2023-01-06_07-24.txt"
 
-python /home/nev/scripts/ob_inst_survey/ranging_survey.py \
+python ~/scripts/ob_inst_survey/ranging_survey_realtime.py \
 --replaynmea $nmea_file \
 --replayrange $etech_file \
 --startcoord  $start \
@@ -89,4 +89,4 @@ python /home/nev/scripts/ob_inst_survey/ranging_survey.py \
 --outfileprefix $prefix
 # --lograw
 
-# python /home/nev/scripts/ob_inst_survey/ranging_survey.py -h
+# python ~/scripts/ob_inst_survey/ranging_survey_realtime.py -h

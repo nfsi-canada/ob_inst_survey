@@ -214,7 +214,7 @@ def main():
                     curr_record["dist"],
                 )
             else:
-                curr_record["depth"] = None
+                curr_record["depth"] = 0
 
             if prev_record and not bad_range:
                 timestamp = re.sub(r"[Tt :_-]", r"_", curr_record["utcTime"])
@@ -251,6 +251,7 @@ def main():
                 prev_record = curr_record
 
             curr_obsvn = pd.DataFrame.from_dict([curr_record])
+            curr_obsvn = curr_obsvn.dropna()
             obsvn_df = pd.concat(
                 [obsvn_df, curr_obsvn],
                 axis="rows",

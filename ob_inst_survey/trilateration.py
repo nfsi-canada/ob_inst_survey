@@ -8,7 +8,7 @@ from scipy.optimize import least_squares
 
 def trilateration(
     obsvns: pd.DataFrame,
-    apriori_coord: pd.Series = pd.Series(),
+    apriori_coord: pd.Series = pd.Series(dtype=float),
 ) -> (pd.Series, pd.Series, pd.DataFrame):
     log = logging.getLogger(__name__)
     log.setLevel(logging.DEBUG)
@@ -25,7 +25,7 @@ def trilateration(
             "A minimum of three range observations are required to "
             "compute a surveyed location."
         )
-        return (pd.DataFrame(), pd.DataFrame(), obsvns)
+        return (pd.DataFrame(dtype=object), pd.DataFrame(dtype=object), obsvns)
 
     # Define transformations
     trans_geoctrc_to_geod = Transformer.from_crs(
@@ -88,7 +88,7 @@ def trilateration(
                 "A minimum of three valid range observations are required to "
                 "compute a surveyed location."
             )
-            return (pd.DataFrame(), apriori_coord, obsvns)
+            return (pd.DataFrame(dtype=object), apriori_coord, obsvns)
 
         result = least_squares(
             rms_err,

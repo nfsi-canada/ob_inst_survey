@@ -62,7 +62,7 @@ def main():
         apriori_coord = pd.Series(args.startcoord, ("lonDec", "latDec", "htAmsl"))
         apriori_coord["htAmsl"] = -apriori_coord["htAmsl"]
     else:
-        apriori_coord = pd.Series()
+        apriori_coord = pd.Series(dtype=float)
     ip_param = obsurv.IpParam(
         port=args.ipport,
         addr=args.ipaddr,
@@ -156,7 +156,7 @@ def main():
     )
     print(", ".join(display_cols))
 
-    obsvn_df = pd.DataFrame()
+    obsvn_df = pd.DataFrame(dtype=object)
     prev_record = {}
 
     # Main survey loop.
@@ -298,10 +298,10 @@ def main():
         print("*** Ranging survey ended. ***")
 
 
-def rect2pol(x, y):
+def rect2pol(x_coord, y_coord):
     """Convert rectangular to polar coordinates"""
-    distance = np.sqrt(x**2 + y**2)
-    bearing = np.degrees(np.arctan2(y, x))
+    distance = np.sqrt(x_coord**2 + y_coord**2)
+    bearing = np.degrees(np.arctan2(y_coord, x_coord))
     if bearing < 0:
         bearing += 360
     return (distance, bearing)

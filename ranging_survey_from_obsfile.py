@@ -47,7 +47,7 @@ def main():
         apriori_coord = pd.Series(args.startcoord, ("lonDec", "latDec", "htAmsl"))
         apriori_coord["htAmsl"] = -apriori_coord["htAmsl"]
     else:
-        apriori_coord = pd.Series()
+        apriori_coord = pd.Series(dtype=float)
 
     timestamp_start = timestamp_from_file(str(obsvn_in_filename))
     if timestamp_start:
@@ -169,7 +169,7 @@ def load_survey_data(filename):
 def timestamp_from_file(filename):
     # An empty string will be returned if no valid timestamp found.
     timestamp = ""
-    timestamp_pattern = (r"\d{4}[:_-]\d{2}[:_-]\d{2}[Tt :_-]\d{2}[:_-]\d{2}")
+    timestamp_pattern = r"\d{4}[:_-]\d{2}[:_-]\d{2}[Tt :_-]\d{2}[:_-]\d{2}"
     try:
         # Look for timestamp in the filename.
         timestamp = re.search(timestamp_pattern, filename).group()
@@ -179,7 +179,7 @@ def timestamp_from_file(filename):
             file_lines = file.readlines()
         for line in file_lines:
             try:
-                # Find first occurrence of a timestamp in a line of the file. 
+                # Find first occurrence of a timestamp in a line of the file.
                 timestamp = re.search(timestamp_pattern, line).group()
                 break
             except AttributeError:
@@ -194,13 +194,13 @@ def timestamp_from_file(filename):
             - timedelta(hours=TIMEZONE)
         )
         timestamp = timestamp.strftime("%Y-%m-%d_%H-%M")
-    
-    return timestamp
-            
 
-def rect2pol(x, y):
-    distance = np.sqrt(x**2 + y**2)
-    bearing = np.degrees(np.arctan2(y, x))
+    return timestamp
+
+
+def rect2pol(x_coord, y_coord):
+    distance = np.sqrt(x_coord**2 + y_coord**2)
+    bearing = np.degrees(np.arctan2(y_coord, x_coord))
     if bearing < 0:
         bearing += 360
     return (distance, bearing)

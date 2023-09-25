@@ -81,7 +81,6 @@ def trilateration(
         # Extract datframes for computation. Exclude any observations marked
         # as outliers.
         used_obs_df = obsvns.loc[~obsvns["outlier"]]
-        excl_obs_df = obsvns.loc[obsvns["outlier"]]
 
         if len(used_obs_df.index) < 3:
             print(
@@ -103,7 +102,6 @@ def trilateration(
 
         # Update residuals of observations included in computation.
         used_obs_df.loc[:, "residual"] = obsvns.loc[~obsvns["outlier"], "residual"]
-        excl_obs_df.loc[:, "residual"] = obsvns.loc[obsvns["outlier"], "residual"]
         std_error = std_devn(used_obs_df["residual"])
 
         # Exclude all observations for next itteration where

@@ -199,6 +199,7 @@ def _get_ranging_dict(
     else:
         obsurv.etech_serial_stream(etech_conn, edgetech_q)
 
+    range_dict = {}
     while True:
         if nmea_q.empty():
             sleep(0.000001)  # Prevents idle loop from 100% CPU thread usage.
@@ -210,15 +211,22 @@ def _get_ranging_dict(
                 if nmea_dict["flag"] in ["TimeoutError", "EOF"]:
                     obsvn_q.put(nmea_dict)
 
-        if edgetech_q.empty():
-            pass
-        else:
+        if not range_dict and not edgetech_q.empty():
             range_dict = _get_next_edgetech_dict(edgetech_q, accou, rangefile_log)
-            if range_dict:
-                # Note: at end of EdgeTech stream
-                #  => range_dict["flag"] in ["TimeoutError", "EOF"]:
-                range_dict = {**nmea_dict, **range_dict}
+
+        if range_dict:
+            if range_dict["flag"] in ["TimeoutError", "EOF"]:
                 obsvn_q.put(range_dict)
+                range_dict = {}
+            else:
+                nmea_datetime = get_nmea_datetime(
+                    nmea_dict["utcTime"],
+                    range_dict["timestamp"],
+                )
+                if nmea_datetime >= range_dict["timestamp"]:
+                    range_dict = {**nmea_dict, **range_dict}
+                    obsvn_q.put(range_dict)
+                    range_dict = {}
 
 
 def _get_next_edgetech_dict(edgetech_q: Queue, accou: dict, rangefile_log: Path):
@@ -240,6 +248,7 @@ def _get_next_edgetech_dict(edgetech_q: Queue, accou: dict, rangefile_log: Path)
 
     if edgetech_item[0] == "RNG:":
         try:
+            range_dict["timestamp"] = timestamp
             range_dict["flag"] = None
             range_dict["tx"] = float(edgetech_item[3])
             range_dict["rx"] = float(edgetech_item[6])
@@ -325,7 +334,6 @@ def _get_next_nmea_dict(nmea_q: Queue, nmea_next_str: str, nmeafile_log: Path):
 
         if nmea_q.empty():
             sleep(0.000001)  # Prevents idle loop from 100% CPU thread usage.
-            pass
         else:
             nmea_str = nmea_q.get(block=False)
 
@@ -433,3 +441,24 @@ def _fix_qlty(idx):
         "Manual input mode",
         "Simulation mode",
     ][idx]
+
+
+def get_nmea_datetime(nmea_timestamp: str, near: datetime):
+    """Convert nmea timestamp string to a datetime"""
+    if nmea_timestamp[:6] == "240000":
+        # At UTC midnight timestamp may incorrectly show hrs as 24.
+        nmea_timestamp = "000000.000"
+    timestamp_curr = datetime.strptime(nmea_timestamp, "%H:%M:%S.%f")
+    secs = (
+        timestamp_curr.hour * 3600
+        + timestamp_curr.minute * 60
+        + timestamp_curr.second
+        + timestamp_curr.microsecond / 1e6
+    )
+    timestamp_delta = timedelta(seconds=secs)
+    nmea_time = datetime(near.year, near.month, near.day) + timestamp_delta
+    if nmea_time.hour > near.hour + 6:
+        nmea_time = nmea_time - timedelta(days=1)
+    elif nmea_time.hour + 6 < near.hour:
+        nmea_time = nmea_time + timedelta(days=1)
+    return nmea_time

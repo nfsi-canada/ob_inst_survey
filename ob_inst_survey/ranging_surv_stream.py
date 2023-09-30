@@ -7,7 +7,7 @@ It then populates the specified Queue with a dict for each range response. This
 dict will contain a union of NMEA and Range data fields.
 """
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from queue import Queue
 import re
@@ -47,7 +47,7 @@ OBSVN_COLS = (
 )
 
 STARTTIME = datetime.now()
-TIMESTAMP_START = STARTTIME.strftime("%Y-%m-%d_%H-%M")
+STARTTIME = STARTTIME + timedelta(seconds=1)  # Allow time for startup.
 
 
 @dataclass
@@ -86,6 +86,8 @@ def ranging_survey_stream(
         replay_start (datetime, optional): _description_. Defaults to None.
         spd_fctr (float, optional): _description_. Defaults to 1.
     """
+    timestamp_start = STARTTIME.strftime("%Y-%m-%d_%H-%M")
+    
     if (nmea_filename or etech_filename) and not (nmea_filename and etech_filename):
         sys.exit(
             "If you specify a replay file for either NMEA or EdgeTech "
@@ -102,11 +104,11 @@ def ranging_survey_stream(
     nmeafile_log = None
     if rawfile_path:
         rangefile_log: str = (
-            rawfile_path / f"rng/{rawfile_prefix}_{TIMESTAMP_START}_RNG.txt"
+            rawfile_path / f"rng/{rawfile_prefix}_{timestamp_start}_RNG.txt"
         )
         rangefile_log.parents[0].mkdir(parents=True, exist_ok=True)
         nmeafile_log: str = (
-            rawfile_path / f"nmea/{rawfile_prefix}_{TIMESTAMP_START}_NMEA.txt"
+            rawfile_path / f"nmea/{rawfile_prefix}_{timestamp_start}_NMEA.txt"
         )
         nmeafile_log.parents[0].mkdir(parents=True, exist_ok=True)
 

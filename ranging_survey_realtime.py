@@ -179,11 +179,11 @@ def main():
             try:
                 display_vals.append(f'{result_dict["cog"]:06.2f}')
                 display_vals.append(f'{result_dict["sogKt"]:5.1f}')
-            except TypeError:
+            except ValueError:
                 display_vals.extend([" " * 6, " " * 5])
             try:
                 display_vals.append(f'{result_dict["heading"]:06.2f}')
-            except TypeError:
+            except ValueError:
                 display_vals.append(" " * 6)
             print(", ".join(display_vals))
 

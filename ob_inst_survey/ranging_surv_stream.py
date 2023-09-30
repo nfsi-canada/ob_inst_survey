@@ -87,7 +87,7 @@ def ranging_survey_stream(
         spd_fctr (float, optional): _description_. Defaults to 1.
     """
     timestamp_start = STARTTIME.strftime("%Y-%m-%d_%H-%M")
-    
+
     if (nmea_filename or etech_filename) and not (nmea_filename and etech_filename):
         sys.exit(
             "If you specify a replay file for either NMEA or EdgeTech "
@@ -202,7 +202,6 @@ def _get_ranging_dict(
     while True:
         if nmea_q.empty():
             sleep(0.000001)  # Prevents idle loop from 100% CPU thread usage.
-            pass
         else:
             nmea_dict, nmea_next_str = _get_next_nmea_dict(
                 nmea_q, nmea_next_str, nmeafile_log
@@ -366,33 +365,33 @@ def _nmea_to_dict(nmea_gga, nmea_rmc, nmea_shr, nmea_vtg, nmea_hdt):
         try:
             nmea_dict["qlty"] = _fix_qlty(int(nmea_gga[6]))
         except ValueError:
-            nmea_dict["qlty"] = None
+            nmea_dict["qlty"] = ""
         try:
             nmea_dict["noSats"] = int(nmea_gga[7])
         except ValueError:
-            nmea_dict["noSats"] = None
+            nmea_dict["noSats"] = ""
         try:
             nmea_dict["hdop"] = float(nmea_gga[8])
         except ValueError:
-            nmea_dict["hdop"] = None
+            nmea_dict["hdop"] = ""
         try:
             nmea_dict["htAmsl"] = float(nmea_gga[9])
         except ValueError:
-            nmea_dict["htAmsl"] = None
+            nmea_dict["htAmsl"] = ""
         nmea_dict["htAmslUnit"] = nmea_gga[10].upper()
         try:
             nmea_dict["geiodSep"] = float(nmea_gga[11])
         except ValueError:
-            nmea_dict["geiodSep"] = None
+            nmea_dict["geiodSep"] = ""
         nmea_dict["geiodSepUnit"] = nmea_gga[12].upper()
     else:
-        nmea_dict["qlty"] = None
-        nmea_dict["noSats"] = None
-        nmea_dict["hdop"] = None
-        nmea_dict["htAmsl"] = None
-        nmea_dict["htAmslUnit"] = None
-        nmea_dict["geiodSep"] = None
-        nmea_dict["geiodSepUnit"] = None
+        nmea_dict["qlty"] = ""
+        nmea_dict["noSats"] = ""
+        nmea_dict["hdop"] = ""
+        nmea_dict["htAmsl"] = ""
+        nmea_dict["htAmslUnit"] = ""
+        nmea_dict["geiodSep"] = ""
+        nmea_dict["geiodSepUnit"] = ""
 
     if nmea_vtg:
         nmea_dict["cog"] = float(nmea_vtg[1])
@@ -401,8 +400,8 @@ def _nmea_to_dict(nmea_gga, nmea_rmc, nmea_shr, nmea_vtg, nmea_hdt):
         nmea_dict["cog"] = float(nmea_rmc[8])
         nmea_dict["sogKt"] = float(nmea_rmc[7])
     else:
-        nmea_dict["cog"] = None
-        nmea_dict["sogKt"] = None
+        nmea_dict["cog"] = ""
+        nmea_dict["sogKt"] = ""
 
     if nmea_shr:
         nmea_dict["heading"] = float(nmea_shr[2])
@@ -413,11 +412,11 @@ def _nmea_to_dict(nmea_gga, nmea_rmc, nmea_shr, nmea_vtg, nmea_hdt):
         if nmea_hdt:
             nmea_dict["heading"] = float(nmea_hdt[1])
         else:
-            nmea_dict["heading"] = None
+            nmea_dict["heading"] = ""
 
-        nmea_dict["roll"] = None
-        nmea_dict["pitch"] = None
-        nmea_dict["heave"] = None
+        nmea_dict["roll"] = ""
+        nmea_dict["pitch"] = ""
+        nmea_dict["heave"] = ""
 
     return nmea_dict
 

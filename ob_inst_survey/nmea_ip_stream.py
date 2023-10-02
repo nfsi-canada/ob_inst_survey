@@ -38,8 +38,8 @@ class IpParam:
 
         # Validate IP address
         if not re.match(
-            r"^(([01]\d{0,2})|(2(\d?|([0-4]\d)|(5[0-5]))))"
-            r"(\.(([01]\d{0,2})|(2(\d?|([0-4]\d)|(5[0-5]))))){3}$",
+            r"^(([01]\d{0,2})|[2-9]\d?|(2(([0-4]\d)|(5[0-5]))))"
+            r"(\.(([01]\d{0,2})|[2-9]\d?|(2(([0-4]\d)|(5[0-5]))))){3}$",
             self.addr,
         ):
             raise ValueError(f"{self.addr} is not a valid IP address.")

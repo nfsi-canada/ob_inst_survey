@@ -45,8 +45,8 @@ OBSVN_COLS = (
     "tx",
     "rx",
 )
-
-STARTTIME = datetime.now()
+TIMEZONE = +13
+STARTTIME = datetime.now() - timedelta(hours=TIMEZONE)
 STARTTIME = STARTTIME + timedelta(seconds=1)  # Allow time for startup.
 
 
@@ -214,11 +214,24 @@ def _get_ranging_dict(
                 obsvn_q.put(range_dict)
                 range_dict = {}
             else:
+                range_dt = datetime.strptime(range_dict["timestamp"], "%Y-%m-%dT%H-%M-%S.%f")
+                range_dt = range_dt - timedelta(hours=TIMEZONE)
                 nmea_datetime = get_nmea_datetime(
                     nmea_dict["utcTime"],
-                    range_dict["timestamp"],
+                    range_dt,
                 )
-                if nmea_datetime >= range_dict["timestamp"]:
+                nmea_min_time = nmea_datetime - timedelta(minutes=2)
+                nmea_max_time = nmea_datetime + timedelta(minutes=2)
+                if not nmea_min_time < range_dt < nmea_max_time:
+                    print(
+                        f"NMEA time and PC time are not in sync:\n"
+                        f"NMEA time: {nmea_datetime}\n"
+                        f"PC time:   {range_dt}"
+                    )
+                    range_dict["flag"] = "EOF"
+                    obsvn_q.put(range_dict)
+                    range_dict = {}
+                if nmea_datetime >= range_dt:
                     range_dict = {**nmea_dict, **range_dict}
                     obsvn_q.put(range_dict)
                     range_dict = {}

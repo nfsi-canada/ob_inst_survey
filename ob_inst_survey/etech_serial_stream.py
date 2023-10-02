@@ -55,5 +55,6 @@ def _get_response(ser) -> str:
     while byte_next != b"":  # next_byte will be "" after ser.timeout
         response.append(byte_next)
         print(byte_next.decode("UTF-8"), end="", flush=True)
+        byte_next = ser.read(1)
     response = b"".join(response)
     return response

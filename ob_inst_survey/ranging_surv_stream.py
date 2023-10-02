@@ -178,10 +178,7 @@ def _get_ranging_dict(
     # If we are replaying from files then we need to have the timestamp from
     # the first NMEA record before starting Edgetech file replay to provide
     # syncronisation.
-    while nmea_q.empty():
-        sleep(0.000001)  # Prevents idle loop from 100% CPU thread usage.
-    nmea_str = nmea_q.get()
-    nmea_dict, nmea_next_str = _get_next_nmea_dict(nmea_q, nmea_str, nmeafile_log)
+    nmea_dict = _get_next_nmea_dict(nmea_q, nmeafile_log)
 
     # Start thread that will populate EdgeTech ranging queue
     edgetech_q: Queue[str] = Queue()
@@ -204,11 +201,9 @@ def _get_ranging_dict(
         if nmea_q.empty():
             sleep(0.000001)  # Prevents idle loop from 100% CPU thread usage.
         else:
-            nmea_dict, nmea_next_str = _get_next_nmea_dict(
-                nmea_q, nmea_next_str, nmeafile_log
-            )
+            nmea_dict = _get_next_nmea_dict(nmea_q, nmeafile_log)
             if nmea_dict:
-                if nmea_dict["flag"] in ["TimeoutError", "EOF"]:
+                if nmea_dict["flag"] in ("TimeoutError", "EOF"):
                     obsvn_q.put(nmea_dict)
 
         if not range_dict and not edgetech_q.empty():
@@ -269,7 +264,7 @@ def _get_next_edgetech_dict(edgetech_q: Queue, accou: dict, rangefile_log: Path)
     return range_dict
 
 
-def _get_next_nmea_dict(nmea_q: Queue, nmea_next_str: str, nmeafile_log: Path):
+def _get_next_nmea_dict(nmea_q: Queue, nmeafile_log: Path):
     """Get next element from queue and process as NMEA sentence."""
     gga = []  # Global Positioning System Fix Data
     # $<TalkerID>GGA,<Timestamp>,<Lat>,<N/S>,<Long>,<E/W>,<GPSQual>,
@@ -288,17 +283,21 @@ def _get_next_nmea_dict(nmea_q: Queue, nmea_next_str: str, nmeafile_log: Path):
     # <RollAccy>,<PitchAccy>,<HeadingAccy>,<GPSQlty>,<INSStatus>*<checksum><CR><LF>
 
     ts_start = None
-    nmea_str = nmea_next_str
     nmea_dict = {}
 
     while True:
-        if nmea_str in ["TimeoutError", "EOF"]:
-            nmea_dict["flag"] = nmea_str
-            return nmea_dict, nmea_str
+        if nmea_q.empty():
+            sleep(0.000001)  # Prevents idle loop from 100% CPU thread usage.
+            continue
 
+        nmea_str = nmea_q.get(block=False)
         if nmeafile_log:
             with open(nmeafile_log, "a+", newline="", encoding="utf-8") as nmea_file:
                 nmea_file.write(f"{nmea_str}\n")
+
+        if nmea_str in ["TimeoutError", "EOF"]:
+            nmea_dict["flag"] = nmea_str
+            return nmea_dict
 
         if not obsurv.nmea_checksum(nmea_str):
             print(
@@ -317,7 +316,7 @@ def _get_next_nmea_dict(nmea_q: Queue, nmea_next_str: str, nmeafile_log: Path):
                 if gga or rmc:
                     nmea_dict = _nmea_to_dict(gga, rmc, shr, vtg, hdt)
                     nmea_dict["flag"] = None
-                    return (nmea_dict, nmea_str)
+                    return nmea_dict
                 gga = rmc = shr = vtg = hdt = []
                 ts_start = ts_msg
 
@@ -331,11 +330,6 @@ def _get_next_nmea_dict(nmea_q: Queue, nmea_next_str: str, nmeafile_log: Path):
             shr = nmea_msg
         elif msg_type == "HDT":
             hdt = nmea_msg
-
-        if nmea_q.empty():
-            sleep(0.000001)  # Prevents idle loop from 100% CPU thread usage.
-        else:
-            nmea_str = nmea_q.get(block=False)
 
 
 def _nmea_to_dict(nmea_gga, nmea_rmc, nmea_shr, nmea_vtg, nmea_hdt):

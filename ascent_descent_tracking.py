@@ -158,7 +158,6 @@ def main():
 
     obsvn_df = pd.DataFrame(dtype=object)
     prev_record = {}
-
     # Main survey loop.
     try:
         while True:
@@ -224,17 +223,22 @@ def main():
                 time_diff = curr_time - prev_time
                 if time_diff.seconds < 0:
                     time_diff = time_diff + timedelta(hours=24)
-
-                depth_diff = curr_record["depth"] - prev_record["depth"]
+                if curr_record["depth"] == 0:
+                    depth_diff = 0
+                else: 
+                    depth_diff = curr_record["depth"] - prev_record["depth"]
                 curr_record["rate_mpsec"] = depth_diff / time_diff.total_seconds()
                 curr_record["rate_mpmin"] = curr_record["rate_mpsec"] * 60
                 if curr_record["rate_mpsec"] > 0:
                     direction = "bottom"
                     depth_remain = -apriori_coord["htAmsl"] - curr_record["depth"]
                     eta_secs = depth_remain / curr_record["rate_mpsec"]
-                else:
+                elif curr_record["rate_mpsec"] < 0:
                     direction = "surface"
                     eta_secs = curr_record["depth"] / -curr_record["rate_mpsec"]
+                else:
+                    direction = "invalid"
+                    eta_secs = 0
                 eta_time = curr_time + timedelta(seconds=eta_secs)
                 curr_record["eta_time"] = eta_time.strftime("%H:%M:%S")
                 eta_mins = f"{eta_secs / 60:6.2f}"
@@ -251,7 +255,6 @@ def main():
                 prev_record = curr_record
 
             curr_obsvn = pd.DataFrame.from_dict([curr_record])
-            curr_obsvn = curr_obsvn.dropna()
             obsvn_df = pd.concat(
                 [obsvn_df, curr_obsvn],
                 axis="rows",
@@ -309,6 +312,13 @@ def rect2pol(x_coord, y_coord):
 
 def vert_depth(slant_range, horz):
     """Compute vertical depth from given slant range and horizontal distance."""
+    if slant_range < horz:
+        print(
+            "Slant range is less than horizontal distance to initial coordinate. "
+            "Either the initial coordinate is incorrect or the instrument is "
+            "drifting towards the vessel."
+        )
+        return 0
     return (slant_range**2 - horz**2) ** 0.5
 
 

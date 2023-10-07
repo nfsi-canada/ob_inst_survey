@@ -1,7 +1,7 @@
 #!/usr/bin/bash
 
 # python ~/scripts/ob_inst_survey/log_etech_to_file.py \
-# --serport COM5 \
+# --serport \dev\ttyS0 \
 # --serbaud 9600 \
 # --serparity N \
 # --serstop 1 \

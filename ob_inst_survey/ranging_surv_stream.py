@@ -45,6 +45,7 @@ OBSVN_COLS = (
     "tx",
     "rx",
 )
+
 TIMEZONE = +13
 STARTTIME = datetime.now() - timedelta(hours=TIMEZONE)
 STARTTIME = STARTTIME + timedelta(seconds=1)  # Allow time for startup.
@@ -220,18 +221,25 @@ def _get_ranging_dict(
                     nmea_dict["utcTime"],
                     range_dt,
                 )
-                nmea_min_time = nmea_datetime - timedelta(minutes=2)
-                nmea_max_time = nmea_datetime + timedelta(minutes=2)
-                if not nmea_min_time < range_dt < nmea_max_time:
+
+                ### Need to identify if this is realtime or replay.
+                if(
+                    range_dict["flag"] == "live" and
+                    not nmea_datetime - timedelta(seconds=15) < range_dt < nmea_datetime + timedelta(seconds=15)
+                ):
                     print(
-                        f"NMEA time and PC time are not in sync:\n"
+                        f"NMEA time and PC time are not in sync. Set the PC "
+                        f"time to within 15 seconds of NMEA time and restart:\n"
                         f"NMEA time: {nmea_datetime}\n"
-                        f"PC time:   {range_dt}"
+                        f"PC time:   {range_dt}"    
                     )
                     range_dict["flag"] = "EOF"
                     obsvn_q.put(range_dict)
                     range_dict = {}
-                if nmea_datetime >= range_dt:
+                if (
+                    range_dict["flag"] == "replay" and
+                    nmea_datetime >= range_dt
+                ):
                     range_dict = {**nmea_dict, **range_dict}
                     obsvn_q.put(range_dict)
                     range_dict = {}
@@ -247,8 +255,8 @@ def _get_next_edgetech_dict(edgetech_q: Queue, accou: dict, rangefile_log: Path)
         range_dict["flag"] = edgetech_str
         return range_dict
 
+    timestamp = timestamp.strftime("%Y-%m-%dT%H-%M-%S.%f")
     if rangefile_log:
-        timestamp = timestamp.strftime("%Y-%m-%dT%H-%M-%S.%f")
         with open(rangefile_log, "a+", newline="", encoding="utf-8") as rng_file:
             rng_file.write(f"{timestamp} {edgetech_str}\n")
 
@@ -257,7 +265,10 @@ def _get_next_edgetech_dict(edgetech_q: Queue, accou: dict, rangefile_log: Path)
     if edgetech_item[0] == "RNG:":
         try:
             range_dict["timestamp"] = timestamp
-            range_dict["flag"] = None
+            if edgetech_item[-1] == "replay":
+                range_dict["flag"] = "replay"
+            else:
+                range_dict["flag"] = "live"
             range_dict["tx"] = float(edgetech_item[3])
             range_dict["rx"] = float(edgetech_item[6])
             try:
@@ -307,6 +318,7 @@ def _get_next_nmea_dict(nmea_q: Queue, nmeafile_log: Path):
         if nmeafile_log:
             with open(nmeafile_log, "a+", newline="", encoding="utf-8") as nmea_file:
                 nmea_file.write(f"{nmea_str}\n")
+
 
         if nmea_str in ["TimeoutError", "EOF"]:
             nmea_dict["flag"] = nmea_str

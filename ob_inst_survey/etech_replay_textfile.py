@@ -8,8 +8,6 @@ import re
 from threading import Thread
 from time import sleep
 
-TIMEZONE = +13
-
 
 def etech_replay_textfile(
     filename: str,
@@ -61,7 +59,6 @@ def __etech_from_file(
                 timestamp_curr = datetime.strptime(
                     timestamp_curr, r"%Y_%m_%d_%H_%M_%S.%f"
                 )
-                timestamp_curr = timestamp_curr - timedelta(hours=TIMEZONE)
             except AttributeError:
                 # If no valid timestamp continue with next response line.
                 continue
@@ -88,6 +85,9 @@ def __etech_from_file(
             # Remove timestamp and enclosing characters from EdgeTech response
             # sentence.
             sentence = re.sub(r"^.*([A-Z]{3}.*?)(\\r\\n')?$", r"\g<1>", sentence)
+
+            # Add "replay" flag at end of sentence.
+            sentence = f"{sentence} replay"
 
             while True:
                 # Pause until time for next EdgeTech sentence

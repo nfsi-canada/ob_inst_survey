@@ -224,19 +224,23 @@ def _get_ranging_dict(
 
                 ### Need to identify if this is realtime or replay.
                 if(
-                    range_dict["flag"] == "live" and
-                    not nmea_datetime - timedelta(seconds=15) < range_dt < nmea_datetime + timedelta(seconds=15)
+                    range_dict["flag"] == "live"
                 ):
-                    print(
-                        f"NMEA time and PC time are not in sync. Set the PC "
-                        f"time to within 15 seconds of NMEA time and restart:\n"
-                        f"NMEA time: {nmea_datetime}\n"
-                        f"PC time:   {range_dt}"    
-                    )
-                    range_dict["flag"] = "EOF"
-                    obsvn_q.put(range_dict)
-                    range_dict = {}
-                if (
+                    if not nmea_datetime - timedelta(seconds=15) < range_dt < nmea_datetime + timedelta(seconds=15):
+                        print(
+                            f"NMEA time and PC time are not in sync. Set the PC "
+                            f"time to within 15 seconds of NMEA time and restart:\n"
+                            f"NMEA time: {nmea_datetime}\n"
+                            f"PC time:   {range_dt}"
+                        )
+                        range_dict["flag"] = "EOF"
+                        obsvn_q.put(range_dict)
+                        range_dict = {}
+                    else:
+                        range_dict = {**nmea_dict, **range_dict}
+                        obsvn_q.put(range_dict)
+                        range_dict = {}
+                elif (
                     range_dict["flag"] == "replay" and
                     nmea_datetime >= range_dt
                 ):

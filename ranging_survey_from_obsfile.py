@@ -145,23 +145,19 @@ def load_survey_data(filename):
         sys.exit(f"File '{data_file}' does not exist!")
 
     # Ensure decimal latutiude and longitude values have correct sign.
-    try:
+    if "lat" in input_df:
         input_df["latDec"] = np.where(
             input_df["lat"].str[-1].isin(("S", "s")),
             -1 * input_df["latDec"].abs(),
             input_df["latDec"].abs(),
         )
-    except KeyError:
-        input_df["latDec"] = -1 * input_df["latDec"].abs()
 
-    try:
+    if "lon" in input_df:
         input_df["lonDec"] = np.where(
             input_df["lon"].str[-1].isin(("W", "w")),
             -1 * input_df["lonDec"].abs(),
             input_df["lonDec"].abs(),
         )
-    except KeyError:
-        pass
 
     return input_df
 

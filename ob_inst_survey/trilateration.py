@@ -79,7 +79,7 @@ def trilateration(
     obsvns[["X", "Y", "Z"]] = obsvns[["X", "Y", "Z"]] - mean_crd
     coord_next_iter = apriori_coord[["X", "Y", "Z"]] - mean_crd
     while True:
-        # Extract datframes for computation. Exclude any observations marked
+        # Extract dataframes for computation. Exclude any observations marked
         # as outliers.
         used_obs_df = obsvns.loc[~obsvns["outlier"]]
 

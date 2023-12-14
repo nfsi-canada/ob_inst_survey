@@ -150,7 +150,7 @@ def load_survey_data(filename):
     except FileNotFoundError:
         sys.exit(f"File '{data_file}' does not exist!")
 
-    # Ensure decimal latutiude and longitude values have correct sign.
+    # Ensure decimal latitude and longitude values have correct sign.
     if "lat" in input_df:
         input_df["latDec"] = np.where(
             input_df["lat"].str[-1].isin(("S", "s")),

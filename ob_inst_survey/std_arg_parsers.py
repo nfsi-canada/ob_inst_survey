@@ -298,4 +298,7 @@ def options_parser():
                         help="Delay time in microseconds for bottom-side acoustic modem, between receiving "
                              "transmission and sending response. Used for calculating range from total acoustic "
                              "traveltime.")
+    parser.add_argument('--plotmax', type=float, default=None, help="Maximum value for plot axis (+/-).")
+    parser.add_argument('--flexaxis', action="store_true", help="Allow plot limits to expand to fit data.")
+
     return parser

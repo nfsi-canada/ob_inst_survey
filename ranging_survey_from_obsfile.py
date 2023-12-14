@@ -64,15 +64,22 @@ def main():
     rsltfile_name = outfile_path / f"{outfile_name}_RESULT.csv"
     obsvn_out_filename = outfile_path / f"{obsvn_in_filename.stem}_OUT.csv"
 
+    # Organize other arguments
     calc_kwargs = {}
     if args.maxrange:
-        calc_kwargs.update({'maxrange', args.maxrange})
+        calc_kwargs.update({'maxrange': args.maxrange})
     if args.outlier_resid:
-        calc_kwargs.update({'max_resid', args.outlier_resid})
+        calc_kwargs.update({'max_resid': args.outlier_resid})
     if args.tz_offset is not None:
-        calc_kwargs.update({'tz_offset', args.tz_offset})
+        calc_kwargs.update({'tz_offset': args.tz_offset})
     if args.tat:
-        calc_kwargs.update({'tat', args.tat})
+        calc_kwargs.update({'tat': args.tat})
+
+    plot_kwargs = {}
+    if args.flexaxis:
+        plot_kwargs.update({'flex_lims': args.flexaxis})
+    if args.plotmax is not None:
+        plot_kwargs.update({'ax_max': args.plotmax})
 
     # Create directories for results.
     outfile_path.mkdir(parents=True, exist_ok=True)
@@ -147,6 +154,7 @@ def main():
         plotfile_path=outfile_path,
         plotfile_name=outfile_name,
         title=f"{args.outfileprefix} {timestamp_start}",
+        **plot_kwargs
     )
 
     all_obs_df.to_csv(obsvn_out_filename, index=False)

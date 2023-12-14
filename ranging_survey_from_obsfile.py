@@ -164,7 +164,6 @@ def main():
 
 
 def load_survey_data(filename, **kwargs):
-    # TODO: Assume depth of 0 if htAmsl column not included
     data_file = filename
     try:
         input_df = pd.read_csv(data_file)
@@ -185,6 +184,26 @@ def load_survey_data(filename, **kwargs):
             -1 * input_df["lonDec"].abs(),
             input_df["lonDec"].abs(),
         )
+
+    # Find depth column if 'htAmsl' not present
+    if 'htAmsl' not in input_df:
+        depth_keys = [
+            ['depth', -1],
+            ['Depth', -1],
+            ['elev', 1],
+            ['Elevation', 1],
+            ['elevation', 1],
+        ]
+        z = False
+        while (len(depth_keys) > 0) and not z:
+            key_info = depth_keys.pop(0)
+            if key_info[0] in input_df:
+                input_df['htAmsl'] = key_info[1] * input_df[key_info[0]]
+                z = True
+
+        # Default depth of '0' if no depth data present
+        if not z:
+            input_df['htAmsl'] = 0
 
     return input_df
 

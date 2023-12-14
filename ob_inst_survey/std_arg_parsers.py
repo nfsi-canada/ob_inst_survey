@@ -300,5 +300,27 @@ def options_parser():
                              "traveltime.")
     parser.add_argument('--plotmax', type=float, default=None, help="Maximum value for plot axis (+/-).")
     parser.add_argument('--flexaxis', action="store_true", help="Allow plot limits to expand to fit data.")
+    parser.add_argument('--disco', action='store_true',
+                        help="Input file for survey data is in OBS Locator format from Guralp's Discovery software.")
+    parser.add_argument('--start', type=str, help="Start date/time of location survey, as YYYYMMDD[HH[MM[SS]]].")
+    parser.add_argument('--end', type=str, help="Start date/time of location survey, as YYYYMMDD[HH[MM[SS]]].")
 
     return parser
+
+
+def parse_cli_datetime(dttm_string):
+    """Parse a datetime string CLI input, from format YYYYMMDD[HH[MM[SS]]]"""
+    from datetime import datetime
+
+    year = int(dttm_string[:4])
+    month = int(dttm_string[4:6])
+    day = int(dttm_string[6:8])
+    hour, minute, second = 0, 0, 0
+    if len(dttm_string) >= 10:
+        hour = int(dttm_string[8:10])
+    if len(dttm_string) >= 12:
+        minute = int(dttm_string[10:12])
+    if len(dttm_string) >= 14:
+        second = int(dttm_string[12:14])
+
+    return datetime(year, month, day, hour, minute, second)

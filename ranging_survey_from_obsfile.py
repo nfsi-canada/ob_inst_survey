@@ -74,6 +74,14 @@ def main():
         calc_kwargs.update({'tz_offset': args.tz_offset})
     if args.tat:
         calc_kwargs.update({'tat': args.tat})
+    if args.disco:
+        calc_kwargs.update({'disco': args.disco})
+    starttime, endtime = None, None
+    if args.start:
+        calc_kwargs.update({'starttime': obsurv.parse_cli_datetime(args.start)})
+    if args.end:
+        calc_kwargs.update({'endtime': obsurv.parse_cli_datetime(args.end)})
+
 
     plot_kwargs = {}
     if args.flexaxis:
@@ -165,8 +173,12 @@ def main():
 
 def load_survey_data(filename, **kwargs):
     data_file = filename
+    disco_fmt = kwargs.pop('disco', False)
     try:
-        input_df = pd.read_csv(data_file)
+        if disco_fmt:
+            input_df = read_obs_locator_log(data_file)
+        else:
+            input_df = pd.read_csv(data_file)
     except FileNotFoundError:
         sys.exit(f"File '{data_file}' does not exist!")
 
@@ -205,7 +217,56 @@ def load_survey_data(filename, **kwargs):
         if not z:
             input_df['htAmsl'] = 0
 
+    # Filter input data to time range of interest (if specified)
+    if 'datetime' in input_df:
+        if 'starttime' in kwargs:
+            input_df = input_df[input_df['datetime'] >= kwargs['starttime']]
+        if 'endtime' in kwargs:
+            input_df = input_df[input_df['datetime'] <= kwargs['endtime']]
+
     return input_df
+
+
+def read_obs_locator_log(filename):
+    """Read log file created by OBS Locator widget in Guralp Discovery software"""
+    from datetime import date, time, datetime
+    import re
+
+    formats = [int, 'date', 'time', float, float, int, float, float, float]
+
+    f = open(filename)
+    head = None
+    while head is None:
+        temp = f.readline()
+        if temp[0] != '#' and temp.strip():
+            head = re.split(r',|\s', temp.lower())
+    head.append('datetime')
+
+    range_data = []
+    for line in f.readlines():
+        if line[0] == '#':
+            continue
+
+        parts = re.split(r',|\s', line)
+        values = []
+        for i in range(len(parts)):
+            if isinstance(formats[i], type):
+                values.append(formats[i](parts[i]))
+            elif formats[i] == 'date':
+                values.append(datetime.strptime(parts[i], '%d-%m-%Y').date())
+            elif formats[i] == 'time':
+                values.append(datetime.strptime(parts[i], '%H:%M:%S').time())
+            else:
+                values.append(parts[i])
+        values.append(datetime.combine(values[1], values[2]))
+        range_data.append(values)
+
+    data = pd.DataFrame(range_data, columns=head)
+    # Ensure required columns are present
+    data['latDec'] = data['lat']
+    data['lonDec'] = data['lon']
+    data['htAmsl'] = 0
+    return data
 
 
 def timestamp_from_file(filename, tz_offset=None):
@@ -250,7 +311,7 @@ def rect2pol(x_coord, y_coord):
     bearing = np.degrees(np.arctan2(y_coord, x_coord))
     if bearing < 0:
         bearing += 360
-    return (distance, bearing)
+    return distance, bearing
 
 
 if __name__ == "__main__":

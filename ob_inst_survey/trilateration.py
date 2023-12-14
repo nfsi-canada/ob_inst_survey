@@ -36,6 +36,7 @@ def trilateration(
     )
 
     obsvns["outlier"] = False
+    # TODO: User-configurable outlier rejection criteria
     obsvns.loc[obsvns["range"] < 50, "outlier"] = True
     obsvns["residual"] = None
     if not apriori_coord.empty:
@@ -106,6 +107,7 @@ def trilateration(
 
         # Exclude all observations for next itteration where
         # residuals of ranges are > 3 std deviations.
+        # TODO: User-configurable outlier rejection criteria
         obsvns.loc[obsvns["residual"].abs() >= std_error * 3, "outlier"] = True
 
         # If any new outliers were identified in current itteration then repeat.

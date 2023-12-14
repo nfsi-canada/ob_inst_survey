@@ -147,6 +147,7 @@ def plot_trilateration(
         f"Error: {final_coord['stdErr']:3.1f}m\n"
         f"Error circle plotted x{err_circle_plot_scale:d}"
     )
+    # TODO: Change text location to relative (transform=ax.transAxes)
     ax1.text(
         -2000,
         -2000,
@@ -163,6 +164,7 @@ def plot_trilateration(
         f"Lon:  {to_degmin(apriori_coord['lonDec'])}\n"
         f"Depth: {-apriori_coord['htAmsl']:3.1f}m"
     )
+    # TODO: Change text location to relative (transform=ax.transAxes)
     ax1.text(
         2000,
         -2000,
@@ -174,6 +176,7 @@ def plot_trilateration(
     )
 
     ax1.legend(loc="upper left")
+    # TODO: Make axis limits and ticks flexible to accommodate range of possible water depths
     ax1.set_extent(
         [-2100, 2100, -2100, 2100],
         crs=local_tm,

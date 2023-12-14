@@ -26,6 +26,7 @@ ACCOU_TURNTIME = 12.5  # millisec
 ACCOU_SPD = 1500  # m/sec
 
 
+# TODO: Add ability for real-time survey with NFSI log files (Discovery)
 def main():
     """
     Initialise NMEA and EdgeTech data streams and log to CSV text file.

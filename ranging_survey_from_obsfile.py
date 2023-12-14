@@ -18,6 +18,7 @@ import ob_inst_survey as obsurv
 DFLT_PREFIX = "RANGINGSURVEY"
 DFLT_PATH = Path.cwd() / "results/"
 TIMEZONE = +13
+# TODO: Do not hard-code time zone offset (CLI parameter with default value)
 
 def main():
     # Retrieve CLI arguments.
@@ -30,6 +31,7 @@ def main():
         "all observation coordinates and depth of 1000m will be used as a start "
         "location"
     )
+    # TODO: Add optional CLI arguments for outlier rejection criteria
     parser = ArgumentParser(
         parents=[
             obsurv.obsfile_parser(),
@@ -63,7 +65,9 @@ def main():
     print(f"Results will be saved to {obsvn_out_filename}")
 
     all_obs_df = load_survey_data(obsvn_in_filename)
+    # TODO: Calculate range from travel-time if not included (require TAT CLI parameter)
 
+    # TODO: User-configurable outlier rejection criteria
     final_coord, apriori_coord_returned, all_obs_df = obsurv.trilateration(all_obs_df, apriori_coord)
     if apriori_coord.empty:
         apriori_coord = apriori_coord_returned
@@ -134,10 +138,12 @@ def main():
 
     all_obs_df.to_csv(obsvn_out_filename, index=False)
 
+    # TODO: Add CLI option to not show figure window (pauses batch process)
     plt.show()
 
 
 def load_survey_data(filename):
+    # TODO: Assume depth of 0 if htAmsl column not included
     data_file = filename
     try:
         input_df = pd.read_csv(data_file)

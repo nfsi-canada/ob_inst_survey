@@ -17,8 +17,8 @@ import ob_inst_survey as obsurv
 
 DFLT_PREFIX = "RANGINGSURVEY"
 DFLT_PATH = Path.cwd() / "results/"
-TIMEZONE = +13
-# TODO: Do not hard-code time zone offset (CLI parameter with default value)
+DFLT_TIMEZONE = +13
+
 
 def main():
     # Retrieve CLI arguments.
@@ -31,13 +31,13 @@ def main():
         "all observation coordinates and depth of 1000m will be used as a start "
         "location"
     )
-    # TODO: Add optional CLI arguments for outlier rejection criteria
     parser = ArgumentParser(
         parents=[
             obsurv.obsfile_parser(),
             obsurv.apriori_coord_parser(),
             obsurv.out_filepath_parser(DFLT_PATH),
             obsurv.out_fileprefix_parser(DFLT_PREFIX),
+            obsurv.options_parser(),
         ],
         description=helpdesc,
     )
@@ -51,7 +51,11 @@ def main():
     else:
         apriori_coord = pd.Series(dtype=float)
 
-    timestamp_start = timestamp_from_file(str(obsvn_in_filename))
+    if args.utc:
+        tz_offset = 0
+    else:
+        tz_offset = args.tz_offset
+    timestamp_start = timestamp_from_file(str(obsvn_in_filename), tz_offset)
     if timestamp_start:
         timestamp_start = f"{timestamp_start}"
 
@@ -60,15 +64,24 @@ def main():
     rsltfile_name = outfile_path / f"{outfile_name}_RESULT.csv"
     obsvn_out_filename = outfile_path / f"{obsvn_in_filename.stem}_OUT.csv"
 
+    calc_kwargs = {}
+    if args.maxrange:
+        calc_kwargs.update({'maxrange', args.maxrange})
+    if args.outlier_resid:
+        calc_kwargs.update({'max_resid', args.outlier_resid})
+    if args.tz_offset is not None:
+        calc_kwargs.update({'tz_offset', args.tz_offset})
+    if args.tat:
+        calc_kwargs.update({'tat', args.tat})
+
     # Create directories for results.
     outfile_path.mkdir(parents=True, exist_ok=True)
     print(f"Results will be saved to {obsvn_out_filename}")
 
-    all_obs_df = load_survey_data(obsvn_in_filename)
+    all_obs_df = load_survey_data(obsvn_in_filename, **calc_kwargs)
     # TODO: Calculate range from travel-time if not included (require TAT CLI parameter)
 
-    # TODO: User-configurable outlier rejection criteria
-    final_coord, apriori_coord_returned, all_obs_df = obsurv.trilateration(all_obs_df, apriori_coord)
+    final_coord, apriori_coord_returned, all_obs_df = obsurv.trilateration(all_obs_df, apriori_coord, **calc_kwargs)
     if apriori_coord.empty:
         apriori_coord = apriori_coord_returned
 
@@ -138,11 +151,11 @@ def main():
 
     all_obs_df.to_csv(obsvn_out_filename, index=False)
 
-    # TODO: Add CLI option to not show figure window (pauses batch process)
-    plt.show()
+    if not args.hidefig:
+        plt.show()
 
 
-def load_survey_data(filename):
+def load_survey_data(filename, **kwargs):
     # TODO: Assume depth of 0 if htAmsl column not included
     data_file = filename
     try:
@@ -168,7 +181,7 @@ def load_survey_data(filename):
     return input_df
 
 
-def timestamp_from_file(filename):
+def timestamp_from_file(filename, tz_offset=None):
     # An empty string will be returned if no valid timestamp found.
     timestamp = ""
     timestamp_pattern = r"\d{4}[:_-]\d{2}[:_-]\d{2}[Tt :_-]\d{2}[:_-]\d{2}"
@@ -188,12 +201,17 @@ def timestamp_from_file(filename):
                 # If no valid timestamp continue with next line.
                 pass
     if timestamp:
+        # Time zone offset
+        if tz_offset is not None:
+            tzo = tz_offset
+        else:
+            tzo = DFLT_TIMEZONE
         # Standardise timestamp format
         timestamp = re.sub(r"[Tt :_-]", r"_", timestamp)
         timestamp = datetime.strptime(timestamp, r"%Y_%m_%d_%H_%M")
         timestamp = (
             timestamp
-            - timedelta(hours=TIMEZONE)
+            - timedelta(hours=tzo)
         )
         timestamp = timestamp.strftime("%Y-%m-%d_%H-%M")
 

@@ -18,6 +18,7 @@ from pyproj.crs.coordinate_operation import TransverseMercatorConversion
 import ob_inst_survey as obsurv
 
 
+# TODO: Make time zone offset user-configurable
 TIMEZONE = +13
 STARTTIME = datetime.now() - timedelta(hours=TIMEZONE)
 DFLT_PREFIX = "RANGINGSURVEY"

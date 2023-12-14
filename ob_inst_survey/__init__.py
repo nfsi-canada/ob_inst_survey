@@ -18,6 +18,7 @@ from .std_arg_parsers import (
     replayfile_parser,
     replay2files_parser,
     apriori_coord_parser,
+    options_parser,
 )
 from .trilateration import trilateration
 from .plot_trilateration import init_plot_trilateration, plot_trilateration

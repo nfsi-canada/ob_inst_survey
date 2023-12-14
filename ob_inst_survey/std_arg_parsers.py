@@ -278,3 +278,24 @@ def timestamp_type(timestamp: str) -> datetime:
             f"Expected format, 'yyyy-mm-dd_HH:MM:SS'!"
         )
         raise ArgumentTypeError(msg) from exc
+
+
+def options_parser():
+    """Parser for various optional CLI arguments"""
+    parser = ArgumentParser(add_help=False)
+    parser.add_argument('--tz_offset', default=None, type=float, help="Time zone offset from UTC in hours.")
+    parser.add_argument('--utc', action="store_true", help="Do not use time zone offset, all times in UTC.")
+    parser.add_argument('--maxrange', default=1.6, type=float,
+                        help="Maximum allowable range measurement to use in trilateration calculation, as a multiplier "
+                             "of the a priori water depth. Ranges greater than this will be marked as outliers and "
+                             "excluded. Default 1.6")
+    parser.add_argument('--outlier_resid', default=3, type=float,
+                        help="Outlier cutoff for range residual in trilateration calculation, as a number of standard "
+                             "deviations. Default 3.")
+    parser.add_argument('--hidefig', action="store_true",
+                        help="Do not show figure window during calculation. Useful for batch processing.")
+    parser.add_argument('--tat', type=int, default=320,
+                        help="Delay time in microseconds for bottom-side acoustic modem, between receiving "
+                             "transmission and sending response. Used for calculating range from total acoustic "
+                             "traveltime.")
+    return parser

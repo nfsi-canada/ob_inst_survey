@@ -5,6 +5,13 @@ NMEA GNSS feeds to survey in the locations of ocean bottom instruments.
 
 The latest version is available on Github <www.github.com/NevPalmer/ob_inst_survey>.
 
+## Dependencies
+
+- Python 3.9+
+- cartopy
+- pyproj
+- Pandas
+
 ### Default Outlier Rejection Criteria
 
 - Range less than 50m

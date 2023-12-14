@@ -82,7 +82,6 @@ def main():
     if args.end:
         calc_kwargs.update({'endtime': obsurv.parse_cli_datetime(args.end)})
 
-
     plot_kwargs = {}
     if args.flexaxis:
         plot_kwargs.update({'flex_lims': args.flexaxis})
@@ -229,7 +228,7 @@ def load_survey_data(filename, **kwargs):
 
 def read_obs_locator_log(filename):
     """Read log file created by OBS Locator widget in Guralp Discovery software"""
-    from datetime import date, time, datetime
+    from datetime import datetime
     import re
 
     formats = [int, 'date', 'time', float, float, int, float, float, float]

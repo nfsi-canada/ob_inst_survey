@@ -76,49 +76,66 @@ def _receive_tcp(tcp_conn: IpParam, nmea_q: Queue[str]):
     Connect to TCP server and populate nmea_q with NMEA sentences.
     If a TCP timeout error it will populate nmea_q with str "TimeoutError".
     """
+    timeout_notified = False
     while True:
-        with socket.socket(
-            family=socket.AF_INET, type=socket.SOCK_STREAM
-        ) as nmea_client:
-            conn_rfsd_notified = False
-            while True:
-                try:
-                    nmea_client.settimeout(5)
-                    nmea_client.connect((tcp_conn.addr, tcp_conn.port))
-                    nmea_client.settimeout(None)
-                    break
-                except TimeoutError:
-                    print(
-                        f"TCP server {tcp_conn.addr}:{tcp_conn.port} is not "
-                        f"available. Exiting!"
-                    )
-                    nmea_q.put("TimeoutError")
-                    sys.exit()
+        try:
+            with socket.socket(
+                family=socket.AF_INET, type=socket.SOCK_STREAM
+            ) as nmea_client:
+                conn_rfsd_notified = False
+                while True:
+                    try:
+                        nmea_client.settimeout(5)
+                        nmea_client.connect((tcp_conn.addr, tcp_conn.port))
+                        nmea_client.settimeout(None)
+                        break
+        
+                    except (ConnectionRefusedError, ConnectionAbortedError):
+                        if not conn_rfsd_notified:
+                            print(
+                                f"*** TCP server {tcp_conn.addr}:{tcp_conn.port} is not "
+                                f"currently providing a connection. Waiting..."
+                            )
+                            conn_rfsd_notified = True
+                print(
+                    f"*** Connected to TCP server at " f"{tcp_conn.addr}:{tcp_conn.port}."
+                )
 
-                except (ConnectionRefusedError, ConnectionAbortedError):
-                    if not conn_rfsd_notified:
-                        print(
-                            f"*** TCP server {tcp_conn.addr}:{tcp_conn.port} is not "
-                            f"currently providing a connection. Waiting..."
-                        )
-                        conn_rfsd_notified = True
+                # Listen for incomming data stream
+                conn_rfsd_notified = False
+                no_nmea_notified = False
+                while True:
+                    message = nmea_client.recv(tcp_conn.buffer)
+                    if message:
+                        nmea_lines = _msg_to_sentences(message)
+                        for line in nmea_lines:
+                            nmea_q.put(line)
+                        no_nmea_notified = False
+                    else:
+                        if not no_nmea_notified:
+                            print(
+                                f"*** Waiting for NMEA message from TCP server."
+                                f"{tcp_conn.addr}:{tcp_conn.port}."
+                            )
+                            no_nmea_notified = True
+
+        except ConnectionAbortedError:
             print(
-                f"*** Connected to TCP server at " f"{tcp_conn.addr}:{tcp_conn.port}."
+                f"Connection to TCP server {tcp_conn.addr}:{tcp_conn.port} was "
+                f"aborted. Attempting to reconnect..."
             )
 
-            # Listen for incomming data stream
-            while True:
-                message = nmea_client.recv(tcp_conn.buffer)
-                if message:
-                    nmea_lines = _msg_to_sentences(message)
-                    for line in nmea_lines:
-                        nmea_q.put(line)
-                else:
-                    print(
-                        f"*** DISCONNECTED from TCP server."
-                        f"{tcp_conn.addr}:{tcp_conn.port}."
-                    )
-                    break
+        except TimeoutError:
+            if not timeout_notified:
+                print(
+                    f"TCP server {tcp_conn.addr}:{tcp_conn.port} is not "
+                    f"available. Waiting..."
+                )
+                timeout_notified = True
+
+        except OSError as err:
+            print(f"{err}")
+
 
 
 def _msg_to_sentences(message: str) -> list[str]:

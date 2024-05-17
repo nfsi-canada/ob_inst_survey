@@ -16,7 +16,7 @@ def obsfile_parser():
     parser = ArgumentParser(add_help=False)
     parser.add_argument(
         "--obsfile",
-        help=(f"Full path and filename for input observations file location."),
+        help=("Full path and filename for input observations file location."),
         type=Path,
     )
     return parser

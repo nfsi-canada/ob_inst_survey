@@ -77,7 +77,30 @@ def _receive_tcp(tcp_conn: IpParam, nmea_q: Queue[str]):
     If a TCP timeout error it will populate nmea_q with str "TimeoutError".
     """
     timeout_notified = False
+    timeout_notified = False
     while True:
+        try:
+            with socket.socket(
+                family=socket.AF_INET, type=socket.SOCK_STREAM
+            ) as nmea_client:
+                conn_rfsd_notified = False
+                while True:
+                    try:
+                        nmea_client.settimeout(5)
+                        nmea_client.connect((tcp_conn.addr, tcp_conn.port))
+                        nmea_client.settimeout(None)
+                        break
+        
+                    except (ConnectionRefusedError, ConnectionAbortedError):
+                        if not conn_rfsd_notified:
+                            print(
+                                f"*** TCP server {tcp_conn.addr}:{tcp_conn.port} is not "
+                                f"currently providing a connection. Waiting..."
+                            )
+                            conn_rfsd_notified = True
+                print(
+                    f"*** Connected to TCP server at " f"{tcp_conn.addr}:{tcp_conn.port}."
+                )
         try:
             with socket.socket(
                 family=socket.AF_INET, type=socket.SOCK_STREAM

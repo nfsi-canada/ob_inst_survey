@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from queue import Queue
 import re
 import socket
-import sys
 from threading import Thread
 
 
@@ -77,6 +76,7 @@ def _receive_tcp(tcp_conn: IpParam, nmea_q: Queue[str]):
     If a TCP timeout error it will populate nmea_q with str "TimeoutError".
     """
     timeout_notified = False
+    oserr_notified = False
     while True:
         try:
             with socket.socket(
@@ -89,7 +89,7 @@ def _receive_tcp(tcp_conn: IpParam, nmea_q: Queue[str]):
                         nmea_client.connect((tcp_conn.addr, tcp_conn.port))
                         nmea_client.settimeout(None)
                         break
-        
+
                     except (ConnectionRefusedError, ConnectionAbortedError):
                         if not conn_rfsd_notified:
                             print(
@@ -104,6 +104,7 @@ def _receive_tcp(tcp_conn: IpParam, nmea_q: Queue[str]):
                 # Listen for incomming data stream
                 conn_rfsd_notified = False
                 no_nmea_notified = False
+                oserr_notified = False
                 while True:
                     message = nmea_client.recv(tcp_conn.buffer)
                     if message:
@@ -133,8 +134,10 @@ def _receive_tcp(tcp_conn: IpParam, nmea_q: Queue[str]):
                 )
                 timeout_notified = True
 
-        except OSError as err:
-            print(f"{err}")
+        except OSError:
+            if not oserr_notified:
+                print("Network has been disconnected.")
+            oserr_notified = True
 
 
 

@@ -2,7 +2,7 @@
 Log NMEA stream to a text file.
 """
 from argparse import ArgumentParser
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from queue import Queue
 import sys
@@ -10,7 +10,6 @@ from time import sleep
 
 import ob_inst_survey as obsurv
 
-TIMESTAMP_START = datetime.now().strftime("%Y-%m-%d_%H-%M")
 DFLT_PREFIX = "NMEA"
 DFLT_PATH = Path.home() / "logs/nmea/"
 
@@ -36,26 +35,29 @@ def main():
             obsurv.out_filepath_parser(DFLT_PATH),
             obsurv.out_fileprefix_parser(DFLT_PREFIX),
             obsurv.ip_arg_parser(ip_param),
+            obsurv.file_split_parser(),
             obsurv.replayfile_parser(None),
         ],
         description=helpdesc,
     )
     args = parser.parse_args()
     outfilepath: Path = args.outfilepath
-    outfilename: str = outfilepath / f"{args.outfileprefix}_{TIMESTAMP_START}.txt"
+    outfileprefix: str = args.outfileprefix
     ip_param = obsurv.IpParam(
         port=args.ipport,
         addr=args.ipaddr,
         prot=args.ipprot,
         buffer=args.ipbuffer,
     )
+    file_split_hours: int = args.filesplit
+    last_file_split = 0
     replay_file: Path = args.replayfile
     replay_start: datetime = args.replaystart
     replay_speed: float = args.replayspeed
 
     # Create directory for logging.
     outfilepath.mkdir(parents=True, exist_ok=True)
-    print(f"Logging NMEA to {outfilename}")
+    print(f"Logging NMEA to directory {outfilepath}")
 
     nmea_q: Queue[str] = Queue()
     if replay_file:
@@ -77,6 +79,17 @@ def main():
             sentence = get_next_sentence(nmea_q)
             if not sentence:
                 continue
+
+            nmea_time = time_from_nmea(sentence)
+            if nmea_time:
+                curr_file_split = int(nmea_time.timestamp()/(file_split_hours*3600))
+                if curr_file_split > last_file_split:
+                    file_timestamp = nmea_time.strftime("%Y-%m-%d_%H-%M")
+                    outfilename: str = outfilepath / f"{outfileprefix}_{file_timestamp}.txt"
+                    last_file_split = curr_file_split
+            elif last_file_split == 0:
+                continue
+
             with open(outfilename, "a+", newline="", encoding="utf-8") as nmea_file:
                 nmea_file.write(f"{sentence}\n")
                 print(sentence)
@@ -98,6 +111,28 @@ def get_next_sentence(nmea_q: Queue) -> str:
             f"been ignored: => {nmea_str}"
         )
     return nmea_str
+
+
+def time_from_nmea(sentence: str) -> datetime:
+    """Return the time from an NMEA sentence"""
+    try:
+        nmea_hr = int(sentence[7:9])
+        nmea_min = int(sentence[9:11])
+        nmea_sec = int(sentence[11:13])
+    except ValueError:
+        return 0
+    sys_time = datetime.now(timezone.utc)
+    sys_yr = sys_time.year
+    sys_mth = sys_time.month
+    sys_day = sys_time.day
+    sys_hr = sys_time.hour
+    nmea_time = datetime(sys_yr, sys_mth, sys_day, nmea_hr, nmea_min, nmea_sec)
+    if nmea_hr == 0 and sys_hr == 23:
+        nmea_time += datetime.timedelta(days=1)
+    if nmea_hr == 23 and sys_hr == 0:
+        nmea_time -= datetime.timedelta(days=1)
+
+    return nmea_time
 
 
 if __name__ == "__main__":

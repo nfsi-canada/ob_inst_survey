@@ -267,6 +267,22 @@ def apriori_coord_parser():
     return parser
 
 
+def file_split_parser():
+    """Returns parser for time period to split files."""
+    parser = ArgumentParser(add_help=False)
+    parser.add_argument(
+        "--filesplit",
+        help=(
+            "Specify an integer number of hours for splitting output files. "
+            "For example 24 will spilt files daily at 0000 hours. "
+            "If not specified or zero, then output file will be continuous."
+        ),
+        default=None,
+        type=int,
+    )
+    return parser
+
+
 def timestamp_type(timestamp: str) -> datetime:
     """Custom argparse type for user timestamp values given from the command line"""
     try:

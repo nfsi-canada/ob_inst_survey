@@ -2,7 +2,7 @@
 Log NMEA stream to a text file.
 """
 from argparse import ArgumentParser
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from queue import Queue
 import sys
@@ -129,9 +129,9 @@ def time_from_nmea(sentence: str) -> datetime:
     nmea_time = datetime(sys_yr, sys_mth, sys_day, nmea_hr, nmea_min, nmea_sec)
     nmea_time = nmea_time.replace(tzinfo=timezone.utc)
     if nmea_hr == 0 and sys_hr == 23:
-        nmea_time += datetime.timedelta(days=1)
+        nmea_time += timedelta(days=1)
     if nmea_hr == 23 and sys_hr == 0:
-        nmea_time -= datetime.timedelta(days=1)
+        nmea_time -= timedelta(days=1)
 
     return nmea_time
 

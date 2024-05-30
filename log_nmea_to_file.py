@@ -1,11 +1,10 @@
-"""
-Log NMEA stream to a text file.
-"""
+"""Log NMEA stream to a text file."""
+
+import sys
 from argparse import ArgumentParser
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from queue import Queue
-import sys
 from time import sleep
 
 import ob_inst_survey as obsurv
@@ -15,9 +14,7 @@ DFLT_PATH = Path.home() / "logs/nmea/"
 
 
 def main():
-    """
-    Initialise NMEA data stream and log to text file.
-    """
+    """Initialise NMEA data stream and log to text file."""
     # Default CLI arguments.
     ip_param = obsurv.IpParam()
 
@@ -82,10 +79,10 @@ def main():
 
             nmea_time = time_from_nmea(sentence)
             if nmea_time:
-                curr_file_split = int(nmea_time.timestamp()/(file_split_hours*3600))
+                curr_file_split = int(nmea_time.timestamp() / (file_split_hours * 3600))
                 if curr_file_split > last_file_split:
                     file_timestamp = nmea_time.strftime("%Y-%m-%d_%H-%M")
-                    outfilename: str = outfilepath / f"{outfileprefix}_{file_timestamp}.txt"
+                    outfilename = outfilepath / f"{outfileprefix}_{file_timestamp}.txt"
                     last_file_split = curr_file_split
             elif last_file_split == 0:
                 continue
@@ -114,7 +111,7 @@ def get_next_sentence(nmea_q: Queue) -> str:
 
 
 def time_from_nmea(sentence: str) -> datetime:
-    """Return the time from an NMEA sentence"""
+    """Return the time from an NMEA sentence."""
     try:
         nmea_hr = int(sentence[7:9])
         nmea_min = int(sentence[9:11])
@@ -126,7 +123,10 @@ def time_from_nmea(sentence: str) -> datetime:
     sys_mth = sys_time.month
     sys_day = sys_time.day
     sys_hr = sys_time.hour
-    nmea_time = datetime(sys_yr, sys_mth, sys_day, nmea_hr, nmea_min, nmea_sec)
+    try:
+        nmea_time = datetime(sys_yr, sys_mth, sys_day, nmea_hr, nmea_min, nmea_sec)
+    except ValueError:
+        return 0
     nmea_time = nmea_time.replace(tzinfo=timezone.utc)
     if nmea_hr == 0 and sys_hr == 23:
         nmea_time += timedelta(days=1)

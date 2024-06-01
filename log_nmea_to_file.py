@@ -74,17 +74,31 @@ def main():
         while True:
             sleep(0.001)  # Prevents idle loop from 100% CPU thread usage.
             sentence = get_next_sentence(nmea_q)
+            if sentence == "bad_checksum":
+                log_invalid_nmea_str(
+                    outfilepath,
+                    sentence,
+                    "Checksum for NMEA line is invalid!",
+                )
+
             if not sentence:
                 continue
 
             nmea_time = time_from_nmea(sentence)
             if nmea_time:
+                if nmea_time == "invalid_time":
+                    log_invalid_nmea_str(
+                        outfilepath, sentence, "NMEA Timestamp is invalid!"
+                    )
+                    continue
                 curr_file_split = int(nmea_time.timestamp() / (file_split_hours * 3600))
                 if curr_file_split > last_file_split:
                     file_timestamp = nmea_time.strftime("%Y-%m-%d_%H-%M")
                     outfilename = outfilepath / f"{outfileprefix}_{file_timestamp}.txt"
                     last_file_split = curr_file_split
             elif last_file_split == 0:
+                # Ignore NMEA sentences until the first sentence with a
+                # valid time field is received.
                 continue
 
             with open(outfilename, "a+", newline="", encoding="utf-8") as nmea_file:
@@ -95,6 +109,17 @@ def main():
         sys.exit("*** End NMEA Logging ***")
 
 
+def log_invalid_nmea_str(outfilepath, nmea_sentence, message):
+    """Write an invalid NMEA sentence to a log file."""
+    logfilename = outfilepath / "invalid_nmea_log.txt"
+    sys_time = datetime.now(timezone.utc)
+    time_str = sys_time.strftime("%Y-%m-%d_%H-%M-%S")
+    with open(logfilename, "a+", newline="", encoding="utf-8") as nmea_log_file:
+        nmea_log_file.write(f"{time_str}:- {message}\n")
+        nmea_log_file.write(f"{nmea_sentence}\n")
+        print(f"{message} Sentence has been ignored:\n{nmea_sentence}")
+
+
 def get_next_sentence(nmea_q: Queue) -> str:
     """Return next sentence from NMEA queue."""
     if nmea_q.empty():
@@ -103,10 +128,7 @@ def get_next_sentence(nmea_q: Queue) -> str:
     if nmea_str in ["TimeoutError", "EOF"]:
         sys.exit(f"*** NMEA: {nmea_str} ***")
     if not obsurv.nmea_checksum(nmea_str):
-        print(
-            f"!!! Checksum for NMEA line is invalid. Line has "
-            f"been ignored: => {nmea_str}"
-        )
+        return "bad_checksum"
     return nmea_str
 
 
@@ -117,6 +139,7 @@ def time_from_nmea(sentence: str) -> datetime:
         nmea_min = int(sentence[9:11])
         nmea_sec = int(sentence[11:13])
     except ValueError:
+        # This NMEA sentence does not contain a time field.
         return 0
     sys_time = datetime.now(timezone.utc)
     sys_yr = sys_time.year
@@ -126,7 +149,7 @@ def time_from_nmea(sentence: str) -> datetime:
     try:
         nmea_time = datetime(sys_yr, sys_mth, sys_day, nmea_hr, nmea_min, nmea_sec)
     except ValueError:
-        return 0
+        return "invalid_time"
     nmea_time = nmea_time.replace(tzinfo=timezone.utc)
     if nmea_hr == 0 and sys_hr == 23:
         nmea_time += timedelta(days=1)

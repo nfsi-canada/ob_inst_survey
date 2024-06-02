@@ -37,6 +37,12 @@ def main():
         ],
         description=helpdesc,
     )
+    parser.add_argument(
+        "--ignorechksum",
+        action="store_true",
+        help=("Ignore the NMEA checksum and use all sentences."),
+    )
+
     args = parser.parse_args()
     outfilepath: Path = args.outfilepath
     outfileprefix: str = args.outfileprefix
@@ -51,6 +57,7 @@ def main():
     replay_file: Path = args.replayfile
     replay_start: datetime = args.replaystart
     replay_speed: float = args.replayspeed
+    ignorechksum: bool = args.ignorechksum
 
     # Create directory for logging.
     outfilepath.mkdir(parents=True, exist_ok=True)
@@ -71,20 +78,32 @@ def main():
         )
 
     try:
+        count_no_time = 0
         while True:
             sleep(0.001)  # Prevents idle loop from 100% CPU thread usage.
             sentence = get_next_sentence(nmea_q)
-            if sentence == "bad_checksum":
+            if not sentence:
+                continue
+
+            if not ignorechksum and not obsurv.nmea_checksum(sentence):
                 log_invalid_nmea_str(
                     outfilepath,
                     sentence,
                     "Checksum for NMEA line is invalid!",
                 )
-
-            if not sentence:
                 continue
 
             nmea_time = time_from_nmea(sentence)
+            if not nmea_time:
+                if last_file_split == 0:
+                    count_no_time += 1
+                    if count_no_time > 5:
+                        # Use system time to name file if NMEA has no time
+                        # stamp after 6 sentences.
+                        nmea_time = datetime.now(timezone.utc)
+                    else:
+                        continue
+
             if nmea_time:
                 if nmea_time == "invalid_time":
                     log_invalid_nmea_str(
@@ -96,10 +115,6 @@ def main():
                     file_timestamp = nmea_time.strftime("%Y-%m-%d_%H-%M")
                     outfilename = outfilepath / f"{outfileprefix}_{file_timestamp}.txt"
                     last_file_split = curr_file_split
-            elif last_file_split == 0:
-                # Ignore NMEA sentences until the first sentence with a
-                # valid time field is received.
-                continue
 
             with open(outfilename, "a+", newline="", encoding="utf-8") as nmea_file:
                 nmea_file.write(f"{sentence}\n")
@@ -127,8 +142,6 @@ def get_next_sentence(nmea_q: Queue) -> str:
     nmea_str = nmea_q.get(block=False)
     if nmea_str in ["TimeoutError", "EOF"]:
         sys.exit(f"*** NMEA: {nmea_str} ***")
-    if not obsurv.nmea_checksum(nmea_str):
-        return "bad_checksum"
     return nmea_str
 
 

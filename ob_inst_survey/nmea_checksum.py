@@ -1,6 +1,5 @@
-"""
-Verify checksum for an NMEA secntence.
-"""
+"""Verify checksum for an NMEA secntence."""
+
 import re
 
 

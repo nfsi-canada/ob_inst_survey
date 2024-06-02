@@ -1,11 +1,10 @@
-"""
-Log NMEA & Ranging data streams to a combined CSV text file.
-"""
+"""Log NMEA & Ranging data streams to a combined CSV text file."""
+
+import re
 from argparse import ArgumentParser
 from datetime import datetime, timedelta
 from pathlib import Path
 from queue import Queue
-import re
 from time import sleep
 
 import matplotlib.pyplot as plt
@@ -17,7 +16,6 @@ from pyproj.crs.coordinate_operation import TransverseMercatorConversion
 
 import ob_inst_survey as obsurv
 
-
 TIMEZONE = +13
 STARTTIME = datetime.now() - timedelta(hours=TIMEZONE)
 DFLT_PREFIX = "RANGINGSURVEY"
@@ -27,9 +25,7 @@ ACCOU_SPD = 1500  # m/sec
 
 
 def main():
-    """
-    Initialise NMEA and EdgeTech data streams and log to CSV text file.
-    """
+    """Initialise NMEA and EdgeTech data streams and log to CSV text file."""
     # Default CLI arguments.
     ip_param = obsurv.IpParam()
     etech_param = obsurv.EtechParam()
@@ -87,7 +83,7 @@ def main():
     if not (replay_rngfile and replay_nmeafile):
         timestamp_start = STARTTIME.strftime("%Y-%m-%d_%H-%M")
     else:
-        with open(replay_rngfile, mode="r", encoding="utf-8") as etech_file:
+        with open(replay_rngfile, encoding="utf-8") as etech_file:
             etech_lines = etech_file.readlines()
         for sentence in etech_lines:
             try:
@@ -270,6 +266,7 @@ def main():
 
 
 def rect2pol(x_coord, y_coord):
+    """Convert X,Y to dist,brg."""
     distance = np.sqrt(x_coord**2 + y_coord**2)
     bearing = np.degrees(np.arctan2(y_coord, x_coord))
     if bearing < 0:

@@ -1,12 +1,12 @@
-"""
-Initiates a thread that connects to a serial data stream from an EdgeTech 
-deckbox.
+"""Initiates a thread that connects to a serial data stream from an EdgeTech deckbox.
+
 Populates the specified Queue with tuples. Each tuple conatins (str, datetime),
 where str is the Edgetech response senstence and timedate is the time the
 response was received.
 """
+
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from queue import Queue
 from threading import Thread
 
@@ -44,7 +44,7 @@ def __receive_serial(ser_conn: SerParam, edgetech_q: Queue[str, datetime]):
         while True:
             response_line = _get_response(ser)
             if response_line != b"":
-                now = datetime.now()
+                now = datetime.now(timezone.utc)
                 response_line = response_line.decode("UTF-8").strip()
                 edgetech_q.put((response_line, now))
 

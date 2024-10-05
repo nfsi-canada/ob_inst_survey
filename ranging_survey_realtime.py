@@ -2,7 +2,7 @@
 
 import re
 from argparse import ArgumentParser
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from queue import Queue
 from time import sleep
@@ -16,8 +16,7 @@ from pyproj.crs.coordinate_operation import TransverseMercatorConversion
 
 import ob_inst_survey as obsurv
 
-TIMEZONE = +13
-STARTTIME = datetime.now() - timedelta(hours=TIMEZONE)
+STARTTIME = datetime.now(timezone.utc)
 DFLT_PREFIX = "RANGINGSURVEY"
 DFLT_PATH = Path.cwd() / "results/"
 ACCOU_TURNTIME = 12.5  # millisec
@@ -96,11 +95,7 @@ def main():
                 timestamp = re.search(timestamp_pattern, sentence).group()
                 timestamp = re.sub(r"[Tt :_-]", r"_", timestamp)
                 timestamp = datetime.strptime(timestamp, r"%Y_%m_%d_%H_%M_%S.%f")
-                timestamp = (
-                    timestamp
-                    - timedelta(hours=TIMEZONE)
-                    + timedelta(seconds=timestamp_offset)
-                )
+                timestamp = timestamp + timedelta(seconds=timestamp_offset)
                 timestamp_start = timestamp.strftime("%Y-%m-%d_%H-%M")
                 break
             except AttributeError:
@@ -113,6 +108,7 @@ def main():
     obsfile_log: str = outfile_path / f"{obsfile_name}.csv"
     rsltfile_name: str = f"{outfile_name}_RESULT"
     rsltfile_log: str = outfile_path / f"{rsltfile_name}.csv"
+    smryfile_log: str = outfile_path / f"RESULTS_SUMMARY.csv"
     if args.lograw:
         rawfile_path = outfile_path
     else:

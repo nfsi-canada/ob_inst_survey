@@ -1,9 +1,8 @@
-"""
-Simulates an NMEA stream from a previously saved NMEA text file.
-"""
-from datetime import datetime, timedelta
-from queue import Queue
+"""Simulates an NMEA stream from a previously saved NMEA text file."""
+
 import re
+from datetime import datetime, timedelta, timezone
+from queue import Queue
 from threading import Thread
 from time import sleep
 
@@ -33,7 +32,7 @@ def __nmea_from_file(
     timestamp_prev = timestamp_start
     timestamp_date = None
     if not actltime_start:
-        actltime_start = datetime.now()
+        actltime_start = datetime.now(timezone.utc)
     with open(filename, encoding="utf-8") as nmea_file:
         for sentence in nmea_file:
             sentence = re.sub(r"^.*\$", "$", sentence.strip())
@@ -64,7 +63,8 @@ def __nmea_from_file(
                 while True:
                     # Pause until time for next NMEA sentence
                     sleep(0.000001)  # Prevents idle loop from 100% CPU thread usage.
-                    actltime_diff = (datetime.now() - actltime_start) * spd_fctr
+                    now = datetime.now(timezone.utc)
+                    actltime_diff = (now - actltime_start) * spd_fctr
                     if actltime_diff >= timestamp_diff:
                         break
             nmea_q.put(sentence)

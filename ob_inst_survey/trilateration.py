@@ -9,7 +9,7 @@ from scipy.optimize import least_squares
 def trilateration(
     obsvns: pd.DataFrame,
     apriori_coord: pd.Series = pd.Series(dtype=float),
-) -> (pd.Series, pd.Series, pd.DataFrame):
+) -> tuple[pd.Series, pd.Series, pd.DataFrame]:
     log = logging.getLogger(__name__)
     log.setLevel(logging.DEBUG)
     formatter = logging.Formatter(
@@ -128,17 +128,18 @@ def trilateration(
 
 
 def distance_3d(crd1, crd2):
-    """
+    """Calculate 3D distance from two sets of X,Y,Z.
+
     Calculate a 3D distance where one parameter is a Pandas DF that contains
-    columns ["X", "Y", "Z"], and the other conatins values (X, Y, Z)
+    columns ["X", "Y", "Z"], and the other conatins values (X, Y, Z).
     """
     crd_diff = crd2 - crd1
     return (crd_diff["X"] ** 2 + crd_diff["Y"] ** 2 + crd_diff["Z"] ** 2) ** 0.5
 
 
 def rms_err(coord, locn_df, range_df):
-    """
-    Root Mean Square Error
+    """Root Mean Square Error.
+
     apriori coord: (X, Y, Z)
     locn_df: [["X", "Y", "Z"]]
     range_df: ["range"]

@@ -1,16 +1,14 @@
-"""
-Log NMEA & Ranging data streams to a combined CSV text file.
-"""
-from argparse import ArgumentParser
+"""Log NMEA & Ranging data streams to a combined CSV text file."""
+
 import csv
+import sys
+from argparse import ArgumentParser
 from datetime import datetime
 from pathlib import Path
 from queue import Queue
-import sys
 from time import sleep
 
 import ob_inst_survey as obsurv
-
 
 OBSVN_COLS = (
     "utcTime",
@@ -59,9 +57,7 @@ ACCOU_SPD = 1500  # m/sec
 
 
 def main():
-    """
-    Initialise NMEA and EdgeTech data streams and log to CSV text file.
-    """
+    """Initialise NMEA and EdgeTech data streams and log to CSV text file."""
     # Default CLI arguments.
     ip_param = obsurv.IpParam()
     etech_param = obsurv.EtechParam()

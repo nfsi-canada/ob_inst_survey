@@ -1,22 +1,23 @@
-"""
-Initiates a thread that connects to an NMEA data stream via UDP or TCP, and 
+"""Initiate ranging survey stream.
+
+Initiates a thread that connects to an NMEA data stream via UDP or TCP, and
 connects to a serial data stream from an EdgeTech deckbox.
 Or will simulate the same by replaying previously recorded text files. One
 containing NMEA data and the other containing EdgeTech ranging responses.
 It then populates the specified Queue with a dict for each range response. This
 dict will contain a union of NMEA and Range data fields.
 """
-from dataclasses import dataclass
-from datetime import datetime, timedelta
-from pathlib import Path
-from queue import Queue
+
 import re
 import sys
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from queue import Queue
 from threading import Thread
 from time import sleep
 
 import ob_inst_survey as obsurv
-
 
 OBSVN_COLS = (
     "flag",
@@ -46,16 +47,13 @@ OBSVN_COLS = (
     "rx",
 )
 
-TIMEZONE = +13
-STARTTIME = datetime.now() - timedelta(hours=TIMEZONE)
+STARTTIME = datetime.now(timezone.utc)
 STARTTIME = STARTTIME + timedelta(seconds=1)  # Allow time for startup.
 
 
 @dataclass
 class EtechParam(obsurv.SerParam):
-    """
-    Dataclass for specifying EdgeTech 8011M deckbox parameters.
-    """
+    """Dataclass for specifying EdgeTech 8011M deckbox parameters."""
 
     turn_time: float = 12.5  # Delay in ms for reply from BPR transducer.
     snd_spd: int = 1500  # Speed of sound in water (typical 1450 to 1570 m/sec)
@@ -73,7 +71,8 @@ def ranging_survey_stream(
     rawfile_path: Path = None,
     rawfile_prefix: str = None,
 ):
-    """
+    """Initiate ranging survey stream.
+
     Initiate a queue that populates with dicts of ranging obseravtions.
     Either provide parameters for both NMEA and EdgeTech deckbox data streams,
     or provide input file details for replaying streams previously recorded.
@@ -143,8 +142,7 @@ def _get_ranging_dict(
     rangefile_log: Path,
     nmeafile_log: Path,
 ):
-    """
-    _summary_
+    """summary.
 
     Args:
         nmea_conn (obsurv.IpParam, optional): _description_. Defaults to None.
@@ -157,7 +155,6 @@ def _get_ranging_dict(
     Returns:
         dict: _description_
     """
-
     accou = {
         "turnTime": etech_conn.turn_time,
         "sndSpd": etech_conn.snd_spd,
@@ -215,18 +212,21 @@ def _get_ranging_dict(
                 obsvn_q.put(range_dict)
                 range_dict = {}
             else:
-                range_dt = datetime.strptime(range_dict["timestamp"], "%Y-%m-%dT%H-%M-%S.%f")
-                range_dt = range_dt - timedelta(hours=TIMEZONE)
+                range_dt = datetime.strptime(
+                    range_dict["timestamp"], "%Y-%m-%dT%H-%M-%S.%f"
+                )
                 nmea_datetime = get_nmea_datetime(
                     nmea_dict["utcTime"],
                     range_dt,
                 )
 
                 ### Need to identify if this is realtime or replay.
-                if(
-                    range_dict["flag"] == "live"
-                ):
-                    if not nmea_datetime - timedelta(seconds=15) < range_dt < nmea_datetime + timedelta(seconds=15):
+                if range_dict["flag"] == "live":
+                    if (
+                        not nmea_datetime - timedelta(seconds=15)
+                        < range_dt
+                        < nmea_datetime + timedelta(seconds=15)
+                    ):
                         print(
                             f"NMEA time and PC time are not in sync. Set the PC "
                             f"time to within 15 seconds of NMEA time and restart:\n"
@@ -240,10 +240,7 @@ def _get_ranging_dict(
                         range_dict = {**nmea_dict, **range_dict}
                         obsvn_q.put(range_dict)
                         range_dict = {}
-                elif (
-                    range_dict["flag"] == "replay" and
-                    nmea_datetime >= range_dt
-                ):
+                elif range_dict["flag"] == "replay" and nmea_datetime >= range_dt:
                     range_dict = {**nmea_dict, **range_dict}
                     obsvn_q.put(range_dict)
                     range_dict = {}
@@ -322,7 +319,6 @@ def _get_next_nmea_dict(nmea_q: Queue, nmeafile_log: Path):
         if nmeafile_log:
             with open(nmeafile_log, "a+", newline="", encoding="utf-8") as nmea_file:
                 nmea_file.write(f"{nmea_str}\n")
-
 
         if nmea_str in ["TimeoutError", "EOF"]:
             nmea_dict["flag"] = nmea_str
@@ -467,7 +463,7 @@ def _fix_qlty(idx):
 
 
 def get_nmea_datetime(nmea_timestamp: str, near: datetime):
-    """Convert nmea timestamp string to a datetime"""
+    """Convert nmea timestamp string to a datetime."""
     if nmea_timestamp[:6] == "240000":
         # At UTC midnight timestamp may incorrectly show hrs as 24.
         nmea_timestamp = "000000.000"

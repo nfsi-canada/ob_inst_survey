@@ -1,25 +1,22 @@
-"""
-Log EdgeTech deckbox serial responses to a text file.
-"""
-from datetime import datetime
-from pathlib import Path
+"""Log EdgeTech deckbox serial responses to a text file."""
+
 import sys
+from datetime import datetime, timezone
+from pathlib import Path
 from time import sleep
 
 from serial import Serial, SerialException
 
 import ob_inst_survey as obsurv
 
-TIMESTAMP_START = datetime.now().strftime("%Y-%m-%d_%H-%M")
+TIMESTAMP_START = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M")
 FILEPREFIX = "edgetech"
 FILEPATH = Path("./logs/edgetech/")
 FILENAME = FILEPATH / f"{FILEPREFIX}_{TIMESTAMP_START}.txt"
 
 
 def main(ser_conn=obsurv.SerParam):
-    """
-    Initialise EdgeTech data stream and log to text file.
-    """
+    """Initialise EdgeTech data stream and log to text file."""
     u_range_gate = 3500  # milliseconds
     # Set serial timout to be greater of upper range gate plus a little extra
     # the or time required to transmir BACS command.
@@ -79,7 +76,7 @@ def main(ser_conn=obsurv.SerParam):
                         continue
                     ser.timeout = serial_timeout
 
-                    now = datetime.now()
+                    now = datetime.now(timezone.utc)
                     now = now.strftime("%Y-%m-%dT%H:%M:%S.%f")
                     flag = flag.decode("UTF-8").strip()
 
@@ -103,7 +100,6 @@ def main(ser_conn=obsurv.SerParam):
 
 def send_command(ser, command):
     """Format string as bytes and send to serial port."""
-
     # Only append '\r' to the command (not '\r\n'). An extra '\n' is being
     # appended to end of ser.write loop elsewhere (not sure how/where).
     command = f"{command.strip().upper()}\r"
@@ -121,8 +117,8 @@ def send_command(ser, command):
     return
 
 
-def get_response(ser) -> (str, str):
-    """flag variable is only relevant when 8011M is in host mode."""
+def get_response(ser) -> tuple[str, str]:
+    """Flag variable is only relevant when 8011M is in host mode."""
     response = []
     flag = ""
     byte_2 = b""

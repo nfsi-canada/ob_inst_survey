@@ -1,18 +1,20 @@
-"""
+"""Start NMEA stream over UDP or  TCP.
+
 Initiates a thread that connects to an NMEA data stream via UDP or TCP and
 populates the specified Queue with NMEA strings.
 """
-from dataclasses import dataclass
-from queue import Queue
+
 import re
 import socket
+from dataclasses import dataclass
+from queue import Queue
 from threading import Thread
 
 
 @dataclass
 class IpParam:
-    """
-    Dataclass for specifying IP connection parameters.
+    """Dataclass for specifying IP connection parameters.
+
     For TCP the IP address is the remote server
     For UDP the IP address is a/the valid local host address (ie one of):
       "0.0.0.0"
@@ -71,8 +73,8 @@ def _receive_udp(udp_conn: IpParam, nmea_q: Queue[str]):
 
 
 def _receive_tcp(tcp_conn: IpParam, nmea_q: Queue[str]):
-    """
-    Connect to TCP server and populate nmea_q with NMEA sentences.
+    """Connect to TCP server and populate nmea_q with NMEA sentences.
+
     If a TCP timeout error it will populate nmea_q with str "TimeoutError".
     """
     timeout_notified = False
@@ -93,12 +95,13 @@ def _receive_tcp(tcp_conn: IpParam, nmea_q: Queue[str]):
                     except (ConnectionRefusedError, ConnectionAbortedError):
                         if not conn_rfsd_notified:
                             print(
-                                f"*** TCP server {tcp_conn.addr}:{tcp_conn.port} is not "
-                                f"currently providing a connection. Waiting..."
+                                f"*** TCP server {tcp_conn.addr}:{tcp_conn.port} is "
+                                f"not currently providing a connection. Waiting..."
                             )
                             conn_rfsd_notified = True
                 print(
-                    f"*** Connected to TCP server at " f"{tcp_conn.addr}:{tcp_conn.port}."
+                    f"*** Connected to TCP server at "
+                    f"{tcp_conn.addr}:{tcp_conn.port}."
                 )
 
                 # Listen for incomming data stream
@@ -138,7 +141,6 @@ def _receive_tcp(tcp_conn: IpParam, nmea_q: Queue[str]):
             if not oserr_notified:
                 print("Network has been disconnected.")
             oserr_notified = True
-
 
 
 def _msg_to_sentences(message: str) -> list[str]:

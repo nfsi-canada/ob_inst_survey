@@ -17,7 +17,7 @@ import ob_inst_survey as obsurv
 
 DFLT_PREFIX = "RANGINGSURVEY"
 DFLT_PATH = Path.cwd() / "results/"
-TIMEZONE = +13
+
 
 def main():
     # Retrieve CLI arguments.
@@ -185,10 +185,6 @@ def timestamp_from_file(filename):
         # Standardise timestamp format
         timestamp = re.sub(r"[Tt :_-]", r"_", timestamp)
         timestamp = datetime.strptime(timestamp, r"%Y_%m_%d_%H_%M")
-        timestamp = (
-            timestamp
-            - timedelta(hours=TIMEZONE)
-        )
         timestamp = timestamp.strftime("%Y-%m-%d_%H-%M")
 
     return timestamp

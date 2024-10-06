@@ -66,7 +66,7 @@ def __etech_from_file(
                 timestamp_curr.hour * 3600
                 + timestamp_curr.minute * 60
                 + timestamp_curr.second
-                + timestamp_curr.microsecond / 10e6
+                + timestamp_curr.microsecond / 1e6
             ) + timestamp_offset
             timestamp_delta = timedelta(seconds=secs)
             if not timestamp_date:

@@ -1,9 +1,9 @@
 """Functions for providing args/parameters to modules."""
 
+import re
 from argparse import ArgumentParser, ArgumentTypeError
 from datetime import datetime
 from pathlib import Path
-import re
 
 import ob_inst_survey as obsurv
 
@@ -38,7 +38,8 @@ def replay2files_parser(
     infile_group.add_argument(
         "--replaynmea",
         help=(
-            f"Full path and filename for NMEA input file. Default: {dflt_nmeareplayfile}"
+            f"Full path and filename for NMEA input file. Default: "
+            f"{dflt_nmeareplayfile}"
         ),
         default=dflt_nmeareplayfile,
         type=Path,
@@ -46,7 +47,8 @@ def replay2files_parser(
     infile_group.add_argument(
         "--replayrange",
         help=(
-            f"Full path and filename for Ranging input file. Default: {dflt_rngreplayfile}"
+            f"Full path and filename for Ranging input file. Default: "
+            f"{dflt_rngreplayfile}"
         ),
         default=dflt_rngreplayfile,
         type=Path,
@@ -113,7 +115,7 @@ def replayfile_parser(dflt_replayfile: Path = DFLT_INFILE):
 
 
 def out_filepath_parser(dflt_filepath: Path = DFLT_PATH):
-    """Returns parser for file directory location"""
+    """Returns parser for file directory location."""
     parser = ArgumentParser(add_help=False)
     parser.add_argument(
         "--outfilepath",
@@ -125,7 +127,7 @@ def out_filepath_parser(dflt_filepath: Path = DFLT_PATH):
 
 
 def out_fileprefix_parser(dflt_fileprefix: str):
-    """Returns parser for file prefix string"""
+    """Returns parser for file prefix string."""
     parser = ArgumentParser(add_help=False)
     parser.add_argument(
         "--outfileprefix",
@@ -142,7 +144,7 @@ def out_fileprefix_parser(dflt_fileprefix: str):
 
 
 def lograw_parser():
-    """Returns parser for lograw switch"""
+    """Returns parser for lograw switch."""
     parser = ArgumentParser(add_help=False)
     parser.add_argument(
         "--lograw",
@@ -157,9 +159,7 @@ def lograw_parser():
 
 
 def ip_arg_parser(nmea_conn: obsurv.IpParam):
-    """
-    Returns parser for Internet Protocol (IP) connection parameters.
-    """
+    """Returns parser for Internet Protocol (IP) connection parameters."""
     parser = ArgumentParser(add_help=False)
     ip_group = parser.add_argument_group(title="NMEA stream IP Parameters:")
     ip_group.add_argument(
@@ -188,9 +188,7 @@ def ip_arg_parser(nmea_conn: obsurv.IpParam):
 
 
 def ser_arg_parser(ser_conn: obsurv.SerParam):
-    """
-    Returns parser for IP connection parameters.
-    """
+    """Returns parser for IP connection parameters."""
     parser = ArgumentParser(add_help=False)
     ser_group = parser.add_argument_group(title="Edgetech stream Serial Parameters:")
     ser_group.add_argument(
@@ -227,9 +225,7 @@ def ser_arg_parser(ser_conn: obsurv.SerParam):
 def edgetech_arg_parser(
     etech_conn: obsurv.EtechParam,
 ):
-    """
-    Returns parser for EdgeTech 8011M deckbox parameters.
-    """
+    """Returns parser for EdgeTech 8011M deckbox parameters."""
     parser = ArgumentParser(
         parents=[ser_arg_parser(etech_conn)],
         add_help=False,
@@ -238,20 +234,26 @@ def edgetech_arg_parser(
     rng_group.add_argument(
         "--acouturn",
         type=float,
-        help=f"Delay in ms for reply from BPR transducer. Default: {etech_conn.turn_time}",
+        help=(
+            f"Delay in ms for reply from BPR transducer. Default: "
+            f"{etech_conn.turn_time}"
+        ),
         default=etech_conn.turn_time,
     )
     rng_group.add_argument(
         "--acouspd",
         type=int,
-        help=f"Speed of sound in water (typical 1450 to 1570 m/sec). Default: {etech_conn.snd_spd}",
+        help=(
+            f"Speed of sound in water (typical 1450 to 1570 m/sec). Default: "
+            f"{etech_conn.snd_spd}"
+        ),
         default=etech_conn.snd_spd,
     )
     return parser
 
 
 def apriori_coord_parser():
-    """Returns parser for apriori coordinate"""
+    """Returns parser for apriori coordinate."""
     parser = ArgumentParser(add_help=False)
     parser.add_argument(
         "--startcoord",
@@ -284,7 +286,7 @@ def file_split_parser():
 
 
 def timestamp_type(timestamp: str) -> datetime:
-    """Custom argparse type for user timestamp values given from the command line"""
+    """Custom argparse type for user timestamp values given from the command line."""
     try:
         timestamp = re.sub(r"[-: _/tT]", "_", timestamp)
         return datetime.strptime(timestamp, "%Y_%m_%d_%H_%M_%S")

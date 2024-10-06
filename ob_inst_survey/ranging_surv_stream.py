@@ -203,7 +203,6 @@ def _get_ranging_dict(
             if nmea_dict:
                 if nmea_dict["flag"] in ("TimeoutError", "EOF"):
                     obsvn_q.put(nmea_dict)
-
         if not range_dict and not edgetech_q.empty():
             range_dict = _get_next_edgetech_dict(edgetech_q, accou, rangefile_log)
 

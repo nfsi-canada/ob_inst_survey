@@ -108,7 +108,6 @@ def main():
     obsfile_log: str = outfile_path / f"{obsfile_name}.csv"
     rsltfile_name: str = f"{outfile_name}_RESULT"
     rsltfile_log: str = outfile_path / f"{rsltfile_name}.csv"
-    smryfile_log: str = outfile_path / f"RESULTS_SUMMARY.csv"
     if args.lograw:
         rawfile_path = outfile_path
     else:
@@ -244,7 +243,17 @@ def main():
                     final_coord["mN"] - apriori_coord["mN"],
                     final_coord["mE"] - apriori_coord["mE"],
                 )
-                final_coord.to_frame().T.to_csv(rsltfile_log, index=False)
+                final_result = final_coord.to_frame().T
+                result_labels = pd.DataFrame(
+                    [
+                        {
+                            "site": args.outfileprefix,
+                            "time": timestamp_start,
+                        }
+                    ]
+                )
+                final_result = pd.concat([result_labels, final_result], 1)
+                final_result.to_csv(rsltfile_log, index=False)
                 obsurv.plot_trilateration(
                     fig=fig,
                     apriori_coord=apriori_returned,

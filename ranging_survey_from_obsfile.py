@@ -120,7 +120,17 @@ def main():
         final_coord["mN"] - apriori_coord["mN"],
         final_coord["mE"] - apriori_coord["mE"],
     )
-    final_coord.to_frame().T.to_csv(rsltfile_name, index=False)
+    final_result = final_coord.to_frame().T
+    result_labels = pd.DataFrame(
+        [
+            {
+                "site": args.outfileprefix,
+                "time": timestamp_start,
+            }
+        ]
+    )
+    final_result = pd.concat([result_labels, final_result], 1)
+    final_result.to_csv(rsltfile_name, index=False)
 
     obsurv.plot_trilateration(
         fig=fig,

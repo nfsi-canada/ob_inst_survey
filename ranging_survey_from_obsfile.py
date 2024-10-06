@@ -127,7 +127,7 @@ def main():
             }
         ]
     )
-    final_result = pd.concat([result_labels, final_result], 1)
+    final_result = pd.concat([result_labels, final_result], axis=1)
     final_result.to_csv(rsltfile_name, index=False)
 
     obsurv.plot_trilateration(

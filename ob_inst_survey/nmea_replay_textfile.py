@@ -37,7 +37,7 @@ def __nmea_from_file(
         for sentence in nmea_file:
             sentence = re.sub(r"^.*\$", "$", sentence.strip())
             nmea_items = sentence.split(sep=",")
-            if re.match(r"\d{6}\.\d{2,4}", nmea_items[1]):
+            if re.match(r"\d{6}\.\d{0,4}", nmea_items[1]):
                 if nmea_items[1][:6] == "240000":
                     # At UTC midnight timestamp may incorrectly show hrs as 24.
                     nmea_items[1] = "000000.000"

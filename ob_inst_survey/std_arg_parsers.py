@@ -286,7 +286,7 @@ def file_split_parser():
 
 
 def timestamp_type(timestamp: str) -> datetime:
-    """Custom argparse type for user timestamp values given from the command line."""
+    """Argparse type for user timestamp values given from the command line."""
     try:
         timestamp = re.sub(r"[-: _/tT]", "_", timestamp)
         return datetime.strptime(timestamp, "%Y_%m_%d_%H_%M_%S")
@@ -299,7 +299,7 @@ def timestamp_type(timestamp: str) -> datetime:
 
 
 def coord_type(ordinate: str) -> int:
-    """Custom argparse type for Lat/Lon as [+-]ddd.dddd[NSEW] or [+-]ddd_mm.mmm[NSEW]."""
+    """Argparse type for Lat/Lon as [+-]ddd.dddd[NSEW] or [+-]ddd_mm.mmm[NSEW]."""
     try:
         ord_match = re.search(
             r"^([+-]?)((\d+(\.\d*)?)|(\d{1,3})_(\d{1,2}(\.\d*)?))([NSEW]?)$",

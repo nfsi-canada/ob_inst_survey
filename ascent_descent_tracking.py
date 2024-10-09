@@ -247,11 +247,14 @@ def main():
 
             curr_obsvn = pd.DataFrame.from_dict([curr_record])
             curr_obsvn = curr_obsvn.dropna()
-            obsvn_df = pd.concat(
-                [obsvn_df, curr_obsvn],
-                axis="rows",
-                ignore_index=True,
-            )
+            if not obsvn_df.empty:
+                obsvn_df = pd.concat(
+                    [obsvn_df, curr_obsvn],
+                    axis="rows",
+                    ignore_index=True,
+                )
+            else:
+                obsvn_df = curr_obsvn
             obsvn_df.to_csv(obsfile_log, index=False)
 
             # Display summary values to screen

@@ -179,11 +179,16 @@ def main():
             print(", ".join(display_vals))
 
             next_record = pd.DataFrame.from_dict([result_dict])
-            obsvn_df = pd.concat(
-                [obsvn_df, next_record],
-                axis="rows",
-                ignore_index=True,
-            )
+
+            if not obsvn_df.empty:
+                obsvn_df = pd.concat(
+                    [obsvn_df, next_record],
+                    axis="rows",
+                    ignore_index=True,
+                )
+            else:
+                obsvn_df = next_record
+
             final_coord, apriori_returned, all_obs_df = obsurv.trilateration(
                 obsvn_df, apriori_coord
             )

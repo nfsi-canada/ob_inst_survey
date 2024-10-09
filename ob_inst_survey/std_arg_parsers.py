@@ -259,12 +259,12 @@ def apriori_coord_parser():
         "--startcoord",
         help=(
             "Specify the start or apriori coordinate. Format is three space "
-            "seperated floats <Lon> <Lat> <Depth> where Lat & Lon are decimal "
-            "degrees, and Depth is metres below MSL."
+            "seperated values <Lon> <Lat> <Depth>. Where Lon & Lat are of format "
+            "[+-]ddd.dddd[NSEW] or [+-]ddd_mm.mmm[NSEW], and Depth is metres below MSL."
         ),
         default=None,
         nargs=3,
-        type=float,
+        type=coord_type,
     )
     return parser
 
@@ -294,5 +294,41 @@ def timestamp_type(timestamp: str) -> datetime:
         msg = (
             f"Specified timestamp ({timestamp}) is not valid! "
             f"Expected format, 'yyyy-mm-dd_HH:MM:SS'!"
+        )
+        raise ArgumentTypeError(msg) from exc
+
+
+def coord_type(ordinate: str) -> int:
+    """Custom argparse type for Lat/Lon as [+-]ddd.dddd[NSEW] or [+-]ddd_mm.mmm[NSEW]."""
+    try:
+        ord_match = re.search(
+            r"^([+-]?)((\d+(\.\d*)?)|(\d{1,3})_(\d{1,2}(\.\d*)?))([NSEW]?)$",
+            ordinate,
+        )
+        if not ord_match:
+            raise ValueError()
+        sign = ord_match.group(1)
+        dec_deg = ord_match.group(3)
+        deg = ord_match.group(5)
+        min = ord_match.group(6)
+        hemisphere = ord_match.group(8)
+        if sign and hemisphere:
+            raise ValueError("Ordinate should use either [+-] or [NSEW], not both.")
+
+        if dec_deg:
+            ord_value = float(dec_deg)
+        else:
+            ord_value = int(deg) + float(min) / 60
+        if sign == "-" or hemisphere in ("S", "W"):
+            return -ord_value
+        else:
+            return ord_value
+
+    except ValueError as exc:
+        msg = (
+            f"Specified Ordinate value ({ordinate}) is not valid! "
+            f"Expected format, either "
+            f"'[+-]ddd.dddd[NSEW]' or '[+-]ddd_mm.mmm[NSEW]'\n"
+            f"Only use either [+-] or [NSEW], not both.!"
         )
         raise ArgumentTypeError(msg) from exc

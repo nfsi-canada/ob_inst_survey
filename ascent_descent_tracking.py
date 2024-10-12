@@ -235,9 +235,9 @@ def main():
                 eta_mins = f"{eta_secs / 60:6.2f}"
                 curr_record["eta_mins"] = eta_secs / 60
             else:
-                curr_record["rate_mpsec"] = None
-                curr_record["rate_mpmin"] = None
-                curr_record["eta_mins"] = None
+                curr_record["rate_mpsec"] = 0
+                curr_record["rate_mpmin"] = 0
+                curr_record["eta_mins"] = 0
                 curr_record["eta_time"] = ""
                 eta_mins = ""
                 direction = ""

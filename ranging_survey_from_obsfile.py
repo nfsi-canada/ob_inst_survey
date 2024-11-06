@@ -53,8 +53,10 @@ def main():
 
     if args.utc:
         tz_offset = 0
-    else:
+    elif args.tz_offset is not None:
         tz_offset = args.tz_offset
+    else:
+        tz_offset = DFLT_TIMEZONE
     timestamp_start = timestamp_from_file(str(obsvn_in_filename), tz_offset)
     if timestamp_start:
         timestamp_start = f"{timestamp_start}"
@@ -76,7 +78,6 @@ def main():
         calc_kwargs.update({'tat': args.tat})
     if args.disco:
         calc_kwargs.update({'disco': args.disco})
-    starttime, endtime = None, None
     if args.start:
         calc_kwargs.update({'starttime': obsurv.parse_cli_datetime(args.start)})
     if args.end:

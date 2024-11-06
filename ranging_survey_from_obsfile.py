@@ -57,12 +57,14 @@ def main():
         tz_offset = args.tz_offset
     else:
         tz_offset = DFLT_TIMEZONE
-    timestamp_start = timestamp_from_file(str(obsvn_in_filename), tz_offset)
-    if timestamp_start:
-        timestamp_start = f"{timestamp_start}"
+    if args.start:
+        timestamp_start = obsurv.parse_cli_datetime(args.start)
+    else:
+        timestamp_start = timestamp_from_file(str(obsvn_in_filename), tz_offset)
 
     outfile_path: Path = args.outfilepath
-    outfile_name = f"{args.outfileprefix}_{timestamp_start}"
+    if timestamp_start:
+        outfile_name = '{0}_{1}'.format(args.outfileprefix, timestamp_start.strftime('%Y-%m-%d_%H-%M'))
     rsltfile_name = outfile_path / f"{outfile_name}_RESULT.csv"
     obsvn_out_filename = outfile_path / f"{obsvn_in_filename.stem}_OUT.csv"
 
@@ -161,7 +163,7 @@ def main():
         observations=all_obs_df,
         plotfile_path=outfile_path,
         plotfile_name=outfile_name,
-        title=f"{args.outfileprefix} {timestamp_start}",
+        title='{0} {1}'.format(args.outfileprefix, timestamp_start.strftime('%Y-%m-%d %H:%M')),
         **plot_kwargs
     )
 
@@ -239,7 +241,7 @@ def read_obs_locator_log(filename):
     while head is None:
         temp = f.readline()
         if temp[0] != '#' and temp.strip():
-            head = re.split(r',|\s', temp.lower())
+            head = re.split(r',|\s', temp.strip().lower())
     head.append('datetime')
 
     range_data = []
@@ -247,9 +249,9 @@ def read_obs_locator_log(filename):
         if line[0] == '#':
             continue
 
-        parts = re.split(r',|\s', line)
+        parts = re.split(r',|\s', line.strip())
         values = []
-        for i in range(len(parts)):
+        for i in range(min(len(parts), len(formats))):
             if isinstance(formats[i], type):
                 values.append(formats[i](parts[i]))
             elif formats[i] == 'date':
@@ -263,8 +265,7 @@ def read_obs_locator_log(filename):
 
     data = pd.DataFrame(range_data, columns=head)
     # Ensure required columns are present
-    data['latDec'] = data['lat']
-    data['lonDec'] = data['lon']
+    data.rename(columns={'lat': 'latDec', 'lon': 'lonDec'}, inplace=True)
     data['htAmsl'] = 0
     return data
 
@@ -301,7 +302,6 @@ def timestamp_from_file(filename, tz_offset=None):
             timestamp
             - timedelta(hours=tzo)
         )
-        timestamp = timestamp.strftime("%Y-%m-%d_%H-%M")
 
     return timestamp
 

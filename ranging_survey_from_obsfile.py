@@ -167,6 +167,7 @@ def main():
         **plot_kwargs
     )
 
+    # TODO: When using Discovery logs, include station/timestamp info in output filename
     all_obs_df.to_csv(obsvn_out_filename, index=False)
 
     if not args.hidefig:

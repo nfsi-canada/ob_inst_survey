@@ -1,8 +1,7 @@
 """
-Initiates a thread that connects to a serial data stream from an EdgeTech 
-deckbox.
-Populates the specified Queue with tuples. Each tuple conatins (str, datetime),
-where str is the Edgetech response senstence and timedate is the time the
+Initiates a thread that connects to a serial data stream from an EdgeTech deckbox.
+Populates the specified Queue with tuples. Each tuple contains (str, datetime),
+where str is the Edgetech response sentence and datetime is the time the
 response was received.
 """
 from dataclasses import dataclass
@@ -39,7 +38,7 @@ def __receive_serial(ser_conn: SerParam, edgetech_q: Queue[str, datetime]):
         bytesize=ser_conn.bytesize,
         timeout=ser_conn.timeout,
     ) as ser:
-        print(f"Connected to EgeTech deckbox: {ser.portstr} at {ser.baudrate} baud.")
+        print(f"Connected to EdgeTech deckbox: {ser.portstr} at {ser.baudrate} baud.")
 
         while True:
             response_line = _get_response(ser)

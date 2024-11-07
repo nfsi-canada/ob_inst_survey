@@ -1,8 +1,8 @@
 from pathlib import Path
 
 import cartopy.crs as ccrs
-import matplotlib as mpl
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FixedLocator
 import numpy as np
 import pandas as pd
 from pyproj.crs.coordinate_operation import TransverseMercatorConversion
@@ -179,7 +179,7 @@ def plot_trilateration(
 
     ax1.legend(loc="upper left")
     if ax_max is None and flex_lims:
-        # TODO: Existing axis limits don't seem to account for error circle...
+        # TODO: Existing axis limits don't seem to account for error circle... might be OK
         curr_ax_lims = [ax1.get_xlim(), ax1.get_ylim()]
         flat_lims = [abs(item) for sublist in curr_ax_lims for item in sublist]
         amx = max(flat_lims)
@@ -218,10 +218,10 @@ def plot_trilateration(
     intvl_secs = 60
     intvl_mins = intvl_secs / 60
     intvl_degs = intvl_mins / 60
-    lon_min = round_dn_minute(np.min(observations["lonDec"]), intvl_mins)
-    lon_max = round_up_minute(np.max(observations["lonDec"]), intvl_mins)
-    lat_min = round_dn_minute(np.min(observations["latDec"]), intvl_mins)
-    lat_max = round_up_minute(np.max(observations["latDec"]), intvl_mins)
+    lon_min = round_dn_minute(np.min(observations["lonDec"]), int(intvl_mins))
+    lon_max = round_up_minute(np.max(observations["lonDec"]), int(intvl_mins))
+    lat_min = round_dn_minute(np.min(observations["latDec"]), int(intvl_mins))
+    lat_max = round_up_minute(np.max(observations["latDec"]), int(intvl_mins))
 
     grdlns = ax1.gridlines(
         crs=ccrs.PlateCarree(),
@@ -239,10 +239,10 @@ def plot_trilateration(
     label_style = {"size": 8, "color": "blue", "rotation": 45}
     grdlns.xlabel_style = label_style
     grdlns.ylabel_style = label_style
-    grdlns.xlocator = mpl.ticker.FixedLocator(
+    grdlns.xlocator = FixedLocator(
         np.arange(lon_min, lon_max + intvl_degs, intvl_degs)
     )
-    grdlns.ylocator = mpl.ticker.FixedLocator(
+    grdlns.ylocator = FixedLocator(
         np.arange(lat_min, lat_max + intvl_degs, intvl_degs)
     )
 
@@ -290,7 +290,7 @@ def to_degmin(dec_deg: float) -> str:
 def pol2rect(distance, bearing):
     x = distance * np.cos(np.radians(bearing))
     y = distance * np.sin(np.radians(bearing))
-    return (x, y)
+    return x, y
 
 
 def rect2pol(x, y):
@@ -298,7 +298,7 @@ def rect2pol(x, y):
     bearing = np.degrees(np.arctan2(y, x))
     if bearing < 0:
         bearing += 360
-    return (distance, bearing)
+    return distance, bearing
 
 
 def define_tick_marks(maximum, interval):

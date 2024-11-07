@@ -298,7 +298,7 @@ def timestamp_type(timestamp: str) -> datetime:
         raise ArgumentTypeError(msg) from exc
 
 
-def coord_type(ordinate: str) -> int:
+def coord_type(ordinate: str) -> float:
     """Argparse type for Lat/Lon as [+-]ddd.dddd[NSEW] or ddd_mm.mmm[NSEW]."""
     try:
         ord_match = re.search(

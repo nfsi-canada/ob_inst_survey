@@ -1,13 +1,15 @@
-"""
-Verify checksum for an NMEA sentence.
-"""
+"""Verify checksum for an NMEA secntence."""
+
 import re
 
 
 def nmea_checksum(sentence: str) -> bool:
     """Returns True if NMEA sentence checksum is valid, otherwise False."""
     sentence_match = re.match(r"\$(.*)\*(.{2})", sentence)
-    chksumdata = sentence_match[1]
+    try:
+        chksumdata = sentence_match[1]
+    except TypeError:
+        return False
     chksum = int(sentence_match[2], 16)  # convert from hex string
     check = 0
 

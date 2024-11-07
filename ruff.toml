@@ -1,0 +1,18 @@
+# Same as Black.
+line-length = 88
+indent-width = 4
+
+[pydocstyle]
+convention = "google"
+
+[lint]
+select = [
+  "UP",  # pyupgrade
+  "D",   # pydocstyle
+  "I",   # isort
+  "E",   # pycodestyle error
+  "W",   # pycodestyle warning
+  "F",   # Pyflakes
+  "B",   # flake8-bugbear
+  "N",   # pep8-naming
+]

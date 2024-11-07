@@ -1,10 +1,8 @@
-"""
-Simulates a serial stream from a previously saved EdgeTech deckbox streamed 
-text file.
-"""
-from datetime import datetime, timedelta
-from queue import Queue
+"""Simulates a serial stream from a saved EdgeTech deckbox streamed text file."""
+
 import re
+from datetime import datetime, timedelta, timezone
+from queue import Queue
 from threading import Thread
 from time import sleep
 
@@ -43,7 +41,7 @@ def __etech_from_file(
     timestamp_prev = timestamp_start
     timestamp_date = None
     if not actltime_start:
-        actltime_start = datetime.now()
+        actltime_start = datetime.now(timezone.utc)
     with open(filename, encoding="utf-8") as etech_file:
         for sentence in etech_file:
             sentence = sentence.strip()
@@ -68,7 +66,7 @@ def __etech_from_file(
                 timestamp_curr.hour * 3600
                 + timestamp_curr.minute * 60
                 + timestamp_curr.second
-                + timestamp_curr.microsecond / 10e6
+                + timestamp_curr.microsecond / 1e6
             ) + timestamp_offset
             timestamp_delta = timedelta(seconds=secs)
             if not timestamp_date:
@@ -92,7 +90,7 @@ def __etech_from_file(
             while True:
                 # Pause until time for next EdgeTech sentence
                 sleep(0.000001)  # Prevents idle loop from 100% CPU thread usage.
-                actltime_diff = (datetime.now() - actltime_start) * spd_fctr
+                actltime_diff = (datetime.now(timezone.utc) - actltime_start) * spd_fctr
                 if actltime_diff >= timestamp_diff:
                     break
             edgetech_q.put((sentence, timestamp_curr))

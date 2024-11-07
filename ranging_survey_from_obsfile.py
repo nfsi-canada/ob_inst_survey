@@ -1,10 +1,10 @@
 """Trilateration survey of ocean bottom instrument from ship positions and ranges."""
-import sys
 
+import re
+import sys
 from argparse import ArgumentParser
 from datetime import datetime, timedelta
 from pathlib import Path
-import re
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,7 +17,6 @@ import ob_inst_survey as obsurv
 
 DFLT_PREFIX = "RANGINGSURVEY"
 DFLT_PATH = Path.cwd() / "results/"
-DFLT_TIMEZONE = +13
 
 
 def main():
@@ -51,12 +50,9 @@ def main():
     else:
         apriori_coord = pd.Series(dtype=float)
 
-    if args.utc:
-        tz_offset = 0
-    elif args.tz_offset is not None:
+    tz_offset = None
+    if args.tz_offset is not None:
         tz_offset = args.tz_offset
-    else:
-        tz_offset = DFLT_TIMEZONE
     if args.start:
         timestamp_start = obsurv.parse_cli_datetime(args.start)
     else:
@@ -123,29 +119,25 @@ def main():
         geodetic_crs="EPSG:4979",
     )
     trans_geod_to_tm = Transformer.from_crs(
-        "EPSG:4979", proj_local_tm, always_xy=True
+        "EPSG:4979",
+        proj_local_tm,
+        always_xy=True,
     )
 
     (
         all_obs_df["mE"],
         all_obs_df["mN"],
-    ) = trans_geod_to_tm.transform(
-        xx=all_obs_df.lonDec, yy=all_obs_df.latDec
-    )
+    ) = trans_geod_to_tm.transform(xx=all_obs_df.lonDec, yy=all_obs_df.latDec)
 
     (
         final_coord["mE"],
         final_coord["mN"],
-    ) = trans_geod_to_tm.transform(
-        xx=final_coord.lonDec, yy=final_coord.latDec
-    )
+    ) = trans_geod_to_tm.transform(xx=final_coord.lonDec, yy=final_coord.latDec)
 
     (
         apriori_coord["mE"],
         apriori_coord["mN"],
-    ) = trans_geod_to_tm.transform(
-        xx=apriori_coord.lonDec, yy=apriori_coord.latDec
-    )
+    ) = trans_geod_to_tm.transform(xx=apriori_coord.lonDec, yy=apriori_coord.latDec)
 
     final_coord["aprLon"] = apriori_coord["lonDec"]
     final_coord["aprLat"] = apriori_coord["latDec"]
@@ -154,7 +146,17 @@ def main():
         final_coord["mN"] - apriori_coord["mN"],
         final_coord["mE"] - apriori_coord["mE"],
     )
-    final_coord.to_frame().T.to_csv(rsltfile_name, index=False)
+    final_result = final_coord.to_frame().T
+    result_labels = pd.DataFrame(
+        [
+            {
+                "site": args.outfileprefix,
+                "time": timestamp_start,
+            }
+        ]
+    )
+    final_result = pd.concat([result_labels, final_result], axis=1)
+    final_result.to_csv(rsltfile_name, index=False)
 
     obsurv.plot_trilateration(
         fig=fig,
@@ -291,18 +293,13 @@ def timestamp_from_file(filename, tz_offset=None):
                 # If no valid timestamp continue with next line.
                 pass
     if timestamp:
-        # Time zone offset
-        if tz_offset is not None:
-            tzo = tz_offset
-        else:
-            tzo = DFLT_TIMEZONE
         # Standardise timestamp format
         timestamp = re.sub(r"[Tt :_-]", r"_", timestamp)
         timestamp = datetime.strptime(timestamp, r"%Y_%m_%d_%H_%M")
-        timestamp = (
-            timestamp
-            - timedelta(hours=tzo)
-        )
+        # Time zone offset
+        if tz_offset is not None:
+            tzo = tz_offset
+            timestamp = (timestamp - timedelta(hours=tzo))
 
     return timestamp
 

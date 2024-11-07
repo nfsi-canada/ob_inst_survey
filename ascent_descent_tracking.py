@@ -1,11 +1,10 @@
-"""
-Process NMEA & Ranging data streams to determin ascent and/or descent rates.
-"""
+"""Process NMEA & Ranging data streams to determin ascent and/or descent rates."""
+
+import re
 from argparse import ArgumentParser
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from queue import Queue
-import re
 from time import sleep
 
 import numpy as np
@@ -16,9 +15,7 @@ from pyproj.crs.coordinate_operation import TransverseMercatorConversion
 
 import ob_inst_survey as obsurv
 
-
-TIMEZONE = +13
-STARTTIME = datetime.now() - timedelta(hours=TIMEZONE)
+STARTTIME = datetime.now(timezone.utc)
 DFLT_PREFIX = "ASCENT-DESCENT"
 DFLT_PATH = Path.cwd() / "results/"
 ACCOU_TURNTIME = 12.5  # millisec
@@ -26,9 +23,7 @@ ACCOU_SPD = 1500  # m/sec
 
 
 def main():
-    """
-    Initialise NMEA and EdgeTech data streams and log to CSV text file.
-    """
+    """Initialise NMEA and EdgeTech data streams and log to CSV text file."""
     # Default CLI arguments.
     ip_param = obsurv.IpParam()
     etech_param = obsurv.EtechParam()
@@ -87,7 +82,7 @@ def main():
     if not (replay_rngfile and replay_nmeafile):
         timestamp_start = STARTTIME.strftime("%Y-%m-%d_%H-%M")
     else:
-        with open(replay_rngfile, mode="r", encoding="utf-8") as etech_file:
+        with open(replay_rngfile, encoding="utf-8") as etech_file:
             etech_lines = etech_file.readlines()
         for sentence in etech_lines:
             try:
@@ -100,11 +95,7 @@ def main():
                 timestamp = re.search(timestamp_pattern, sentence).group()
                 timestamp = re.sub(r"[Tt :_-]", r"_", timestamp)
                 timestamp = datetime.strptime(timestamp, r"%Y_%m_%d_%H_%M_%S.%f")
-                timestamp = (
-                    timestamp
-                    - timedelta(hours=TIMEZONE)
-                    + timedelta(seconds=timestamp_offset)
-                )
+                timestamp = timestamp + timedelta(seconds=timestamp_offset)
                 timestamp_start = timestamp.strftime("%Y-%m-%d_%H-%M")
                 break
             except AttributeError:
@@ -225,7 +216,7 @@ def main():
                     time_diff = time_diff + timedelta(hours=24)
                 if curr_record["depth"] == 0:
                     depth_diff = 0
-                else: 
+                else:
                     depth_diff = curr_record["depth"] - prev_record["depth"]
                 curr_record["rate_mpsec"] = depth_diff / time_diff.total_seconds()
                 curr_record["rate_mpmin"] = curr_record["rate_mpsec"] * 60
@@ -244,9 +235,9 @@ def main():
                 eta_mins = f"{eta_secs / 60:6.2f}"
                 curr_record["eta_mins"] = eta_secs / 60
             else:
-                curr_record["rate_mpsec"] = None
-                curr_record["rate_mpmin"] = None
-                curr_record["eta_mins"] = None
+                curr_record["rate_mpsec"] = 0
+                curr_record["rate_mpmin"] = 0
+                curr_record["eta_mins"] = 0
                 curr_record["eta_time"] = ""
                 eta_mins = ""
                 direction = ""
@@ -255,11 +246,15 @@ def main():
                 prev_record = curr_record
 
             curr_obsvn = pd.DataFrame.from_dict([curr_record])
-            obsvn_df = pd.concat(
-                [obsvn_df, curr_obsvn],
-                axis="rows",
-                ignore_index=True,
-            )
+            curr_obsvn = curr_obsvn.dropna()
+            if not obsvn_df.empty:
+                obsvn_df = pd.concat(
+                    [obsvn_df, curr_obsvn],
+                    axis="rows",
+                    ignore_index=True,
+                )
+            else:
+                obsvn_df = curr_obsvn
             obsvn_df.to_csv(obsfile_log, index=False)
 
             # Display summary values to screen
@@ -302,7 +297,7 @@ def main():
 
 
 def rect2pol(x_coord, y_coord):
-    """Convert rectangular to polar coordinates"""
+    """Convert rectangular to polar coordinates."""
     distance = np.sqrt(x_coord**2 + y_coord**2)
     bearing = np.degrees(np.arctan2(y_coord, x_coord))
     if bearing < 0:

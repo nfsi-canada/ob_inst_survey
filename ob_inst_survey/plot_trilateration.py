@@ -253,8 +253,7 @@ def plot_trilateration(
 
 
 def round_up_minute(dec_deg: float, minutes: int = 1):
-    """
-    Round decimal degrees up to the nearest specified number of minutes while
+    """Round decimal degrees up to the nearest specified number of minutes while
     retaining decimal degrees representation.
     """
     multiplier = 60 / minutes
@@ -262,8 +261,7 @@ def round_up_minute(dec_deg: float, minutes: int = 1):
 
 
 def round_dn_minute(dec_deg: float, minutes: int = 1):
-    """
-    Round decimal degrees down to the nearest specified number of minutes while
+    """Round decimal degrees down to the nearest specified number of minutes while
     retaining decimal degrees representation.
     """
     multiplier = 60 / minutes
@@ -271,8 +269,7 @@ def round_dn_minute(dec_deg: float, minutes: int = 1):
 
 
 def to_dms(dec_deg: float) -> str:
-    """
-    Convert decimal degrees to a string representation formatted as
+    """Convert decimal degrees to a string representation formatted as
     DDD°MM'SS.SSS"
     """
     deg = np.trunc(dec_deg)
@@ -282,8 +279,7 @@ def to_dms(dec_deg: float) -> str:
 
 
 def to_degmin(dec_deg: float) -> str:
-    """
-    Convert decimal degrees to a string representation formatted as
+    """Convert decimal degrees to a string representation formatted as
     DDD°MM.MMM'
     """
     deg = np.trunc(dec_deg)

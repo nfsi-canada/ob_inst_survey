@@ -1,24 +1,21 @@
-"""
-Log EdgeTech deckbox serial responses to a text file.
-"""
+"""Log EdgeTech deckbox serial responses to a text file."""
+
+import sys
 from argparse import ArgumentParser
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from queue import Queue
-import sys
 from time import sleep
 
 import ob_inst_survey as obsurv
 
-TIMESTAMP_START = datetime.utcnow().strftime("%Y-%m-%d_%H-%M")
+TIMESTAMP_START = datetime.now(timezone.utc).strftime("%Y-%m-%d_%H-%M")
 DFLT_PREFIX = "edgetech"
 DFLT_PATH = Path.home() / "logs/edgetech/"
 
 
 def main():
-    """
-    Initialise EdgeTech data stream and log to text file.
-    """
+    """Initialise EdgeTech data stream and log to text file."""
     # Default CLI arguments.
     ser_param = obsurv.SerParam()
 

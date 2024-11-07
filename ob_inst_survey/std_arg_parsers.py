@@ -332,3 +332,49 @@ def coord_type(ordinate: str) -> int:
             f"Only use either [+-] or [NSEW], not both."
         )
         raise ArgumentTypeError(msg) from exc
+
+
+def options_parser():
+    """Parser for various optional CLI arguments"""
+    parser = ArgumentParser(add_help=False)
+    parser.add_argument('--tz_offset', default=None, type=float, help="Time zone offset from UTC in hours.")
+    parser.add_argument('--utc', action="store_true", help="Do not use time zone offset, all times in UTC.")
+    parser.add_argument('--maxrange', default=1.6, type=float,
+                        help="Maximum allowable range measurement to use in trilateration calculation, as a multiplier "
+                             "of the a priori water depth. Ranges greater than this will be marked as outliers and "
+                             "excluded. Default 1.6")
+    parser.add_argument('--outlier_resid', default=3, type=float,
+                        help="Outlier cutoff for range residual in trilateration calculation, as a number of standard "
+                             "deviations. Default 3.")
+    parser.add_argument('--hidefig', action="store_true",
+                        help="Do not show figure window during calculation. Useful for batch processing.")
+    parser.add_argument('--tat', type=int, default=320,
+                        help="Delay time in microseconds for bottom-side acoustic modem, between receiving "
+                             "transmission and sending response. Used for calculating range from total acoustic "
+                             "traveltime.")
+    parser.add_argument('--plotmax', type=float, default=None, help="Maximum value for plot axis (+/-).")
+    parser.add_argument('--flexaxis', action="store_true", help="Allow plot limits to expand to fit data.")
+    parser.add_argument('--disco', action='store_true',
+                        help="Input file for survey data is in OBS Locator format from Guralp's Discovery software.")
+    parser.add_argument('--start', type=str, help="Start date/time of location survey, as YYYYMMDD[HH[MM[SS]]].")
+    parser.add_argument('--end', type=str, help="Start date/time of location survey, as YYYYMMDD[HH[MM[SS]]].")
+
+    return parser
+
+
+def parse_cli_datetime(dttm_string):
+    """Parse a datetime string CLI input, from format YYYYMMDD[HH[MM[SS]]]"""
+    from datetime import datetime
+
+    year = int(dttm_string[:4])
+    month = int(dttm_string[4:6])
+    day = int(dttm_string[6:8])
+    hour, minute, second = 0, 0, 0
+    if len(dttm_string) >= 10:
+        hour = int(dttm_string[8:10])
+    if len(dttm_string) >= 12:
+        minute = int(dttm_string[10:12])
+    if len(dttm_string) >= 14:
+        second = int(dttm_string[12:14])
+
+    return datetime(year, month, day, hour, minute, second)

@@ -25,6 +25,8 @@ def plot_trilateration(
     plotfile_path: Path = None,
     plotfile_name: str = None,
     title: str = "Ranging Survey",
+    ax_max: float = None,
+    flex_lims: bool = False,
 ):
     plotfile: Path = None
     if plotfile_path and plotfile_name:
@@ -148,13 +150,14 @@ def plot_trilateration(
         f"Error circle plotted x{err_circle_plot_scale:d}"
     )
     ax1.text(
-        -2000,
-        -2000,
+        (100./4200),
+        (100./4200),
         result_text,
         horizontalalignment="left",
         multialignment="left",
         fontfamily="monospace",
         fontsize="small",
+        transform=ax1.transAxes,
     )
 
     apriori_text = (
@@ -164,22 +167,50 @@ def plot_trilateration(
         f"Depth: {-apriori_coord['htAmsl']:3.1f}m"
     )
     ax1.text(
-        2000,
-        -2000,
+        (4100./4200),
+        (100./4200),
         apriori_text,
         horizontalalignment="right",
         multialignment="left",
         fontfamily="monospace",
         fontsize="small",
+        transform=ax1.transAxes,
     )
 
     ax1.legend(loc="upper left")
-    ax1.set_extent(
-        [-2100, 2100, -2100, 2100],
-        crs=local_tm,
-    )
-    ax1.set_xticks([-2000, -1000, 0, 1000, 2000])
-    ax1.set_yticks([-2000, -1000, 0, 1000, 2000])
+    if ax_max is None and flex_lims:
+        # TODO: Existing axis limits don't seem to account for error circle...
+        curr_ax_lims = [ax1.get_xlim(), ax1.get_ylim()]
+        flat_lims = [abs(item) for sublist in curr_ax_lims for item in sublist]
+        amx = max(flat_lims)
+        if amx < 500:
+            ax_max = 550
+        elif amx < 1000:
+            ax_max = 1100
+        else:
+            ax_max = 1000 * np.ceil(amx / 1000) + 100
+
+    if ax_max is not None:
+        ax1.set_extent([-ax_max, ax_max, -ax_max, ax_max], crs=local_tm)
+        if ax_max < 600:
+            interval = 100
+        elif ax_max < 1000:
+            interval = 200
+        elif ax_max < 2000:
+            interval = 500
+        else:
+            interval = 1000
+        max_tick = interval * (ax_max // interval)
+    else:
+        ax1.set_extent(
+            [-2100, 2100, -2100, 2100],
+            crs=local_tm,
+        )
+        max_tick = 2000
+        interval = 1000
+    major_ticks = define_tick_marks(max_tick, interval)
+    ax1.set_xticks(major_ticks)
+    ax1.set_yticks(major_ticks)
     plt.minorticks_on()
     plt.grid(which="major", color="grey", linestyle="-", linewidth=0.5)
     plt.grid(which="minor", color="grey", linestyle="--", linewidth=0.25)
@@ -268,3 +299,9 @@ def rect2pol(x, y):
     if bearing < 0:
         bearing += 360
     return (distance, bearing)
+
+
+def define_tick_marks(maximum, interval):
+    max_tick = interval * (maximum // interval)
+    ticks = np.arange(-max_tick, max_tick + 1, interval)
+    return ticks

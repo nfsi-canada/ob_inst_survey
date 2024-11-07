@@ -36,6 +36,7 @@ def main():
             obsurv.apriori_coord_parser(),
             obsurv.out_filepath_parser(DFLT_PATH),
             obsurv.out_fileprefix_parser(DFLT_PREFIX),
+            obsurv.options_parser(),
         ],
         description=helpdesc,
     )
@@ -49,24 +50,51 @@ def main():
     else:
         apriori_coord = pd.Series(dtype=float)
 
-    timestamp_start = timestamp_from_file(str(obsvn_in_filename))
-    if timestamp_start:
-        timestamp_start = f"{timestamp_start}"
+    tz_offset = None
+    if args.tz_offset is not None:
+        tz_offset = args.tz_offset
+    if args.start:
+        timestamp_start = obsurv.parse_cli_datetime(args.start)
+    else:
+        timestamp_start = timestamp_from_file(str(obsvn_in_filename), tz_offset)
 
     outfile_path: Path = args.outfilepath
-    outfile_name = f"{args.outfileprefix}_{timestamp_start}"
+    if timestamp_start:
+        outfile_name = '{0}_{1}'.format(args.outfileprefix, timestamp_start.strftime('%Y-%m-%d_%H-%M'))
     rsltfile_name = outfile_path / f"{outfile_name}_RESULT.csv"
     obsvn_out_filename = outfile_path / f"{obsvn_in_filename.stem}_OUT.csv"
+
+    # Organize other arguments
+    calc_kwargs = {}
+    if args.maxrange:
+        calc_kwargs.update({'maxrange': args.maxrange})
+    if args.outlier_resid:
+        calc_kwargs.update({'max_resid': args.outlier_resid})
+    if args.tz_offset is not None:
+        calc_kwargs.update({'tz_offset': args.tz_offset})
+    if args.tat:
+        calc_kwargs.update({'tat': args.tat})
+    if args.disco:
+        calc_kwargs.update({'disco': args.disco})
+    if args.start:
+        calc_kwargs.update({'starttime': obsurv.parse_cli_datetime(args.start)})
+    if args.end:
+        calc_kwargs.update({'endtime': obsurv.parse_cli_datetime(args.end)})
+
+    plot_kwargs = {}
+    if args.flexaxis:
+        plot_kwargs.update({'flex_lims': args.flexaxis})
+    if args.plotmax is not None:
+        plot_kwargs.update({'ax_max': args.plotmax})
 
     # Create directories for results.
     outfile_path.mkdir(parents=True, exist_ok=True)
     print(f"Results will be saved to {obsvn_out_filename}")
 
-    all_obs_df = load_survey_data(obsvn_in_filename)
+    all_obs_df = load_survey_data(obsvn_in_filename, **calc_kwargs)
+    # TODO: Calculate range from travel-time if not included (require TAT CLI parameter)
 
-    final_coord, apriori_coord_returned, all_obs_df = obsurv.trilateration(
-        all_obs_df, apriori_coord
-    )
+    final_coord, apriori_coord_returned, all_obs_df = obsurv.trilateration(all_obs_df, apriori_coord, **calc_kwargs)
     if apriori_coord.empty:
         apriori_coord = apriori_coord_returned
 
@@ -137,22 +165,29 @@ def main():
         observations=all_obs_df,
         plotfile_path=outfile_path,
         plotfile_name=outfile_name,
-        title=f"{args.outfileprefix} {timestamp_start}",
+        title='{0} {1}'.format(args.outfileprefix, timestamp_start.strftime('%Y-%m-%d %H:%M')),
+        **plot_kwargs
     )
 
+    # TODO: When using Discovery logs, include station/timestamp info in output filename
     all_obs_df.to_csv(obsvn_out_filename, index=False)
 
-    plt.show()
+    if not args.hidefig:
+        plt.show()
 
 
-def load_survey_data(filename):
+def load_survey_data(filename, **kwargs):
     data_file = filename
+    disco_fmt = kwargs.pop('disco', False)
     try:
-        input_df = pd.read_csv(data_file)
+        if disco_fmt:
+            input_df = read_obs_locator_log(data_file)
+        else:
+            input_df = pd.read_csv(data_file)
     except FileNotFoundError:
         sys.exit(f"File '{data_file}' does not exist!")
 
-    # Ensure decimal latutiude and longitude values have correct sign.
+    # Ensure decimal latitude and longitude values have correct sign.
     if "lat" in input_df:
         input_df["latDec"] = np.where(
             input_df["lat"].str[-1].isin(("S", "s")),
@@ -167,10 +202,78 @@ def load_survey_data(filename):
             input_df["lonDec"].abs(),
         )
 
+    # Find depth column if 'htAmsl' not present
+    if 'htAmsl' not in input_df:
+        depth_keys = [
+            ['depth', -1],
+            ['Depth', -1],
+            ['elev', 1],
+            ['Elevation', 1],
+            ['elevation', 1],
+        ]
+        z = False
+        while (len(depth_keys) > 0) and not z:
+            key_info = depth_keys.pop(0)
+            if key_info[0] in input_df:
+                input_df['htAmsl'] = key_info[1] * input_df[key_info[0]]
+                z = True
+
+        # Default depth of '0' if no depth data present
+        if not z:
+            input_df['htAmsl'] = 0
+
+    # Filter input data to time range of interest (if specified)
+    if 'datetime' in input_df:
+        if 'starttime' in kwargs:
+            input_df = input_df[input_df['datetime'] >= kwargs['starttime']]
+        if 'endtime' in kwargs:
+            input_df = input_df[input_df['datetime'] <= kwargs['endtime']]
+
     return input_df
 
 
-def timestamp_from_file(filename):
+def read_obs_locator_log(filename):
+    """Read log file created by OBS Locator widget in Guralp Discovery software"""
+    from datetime import datetime
+    import re
+
+    formats = [int, 'date', 'time', float, float, int, float, float, float]
+
+    f = open(filename)
+    head = None
+    while head is None:
+        temp = f.readline()
+        if temp[0] != '#' and temp.strip():
+            head = re.split(r',|\s', temp.strip().lower())
+    head.append('datetime')
+
+    range_data = []
+    for line in f.readlines():
+        if line[0] == '#':
+            continue
+
+        parts = re.split(r',|\s', line.strip())
+        values = []
+        for i in range(min(len(parts), len(formats))):
+            if isinstance(formats[i], type):
+                values.append(formats[i](parts[i]))
+            elif formats[i] == 'date':
+                values.append(datetime.strptime(parts[i], '%d-%m-%Y').date())
+            elif formats[i] == 'time':
+                values.append(datetime.strptime(parts[i], '%H:%M:%S').time())
+            else:
+                values.append(parts[i])
+        values.append(datetime.combine(values[1], values[2]))
+        range_data.append(values)
+
+    data = pd.DataFrame(range_data, columns=head)
+    # Ensure required columns are present
+    data.rename(columns={'lat': 'latDec', 'lon': 'lonDec'}, inplace=True)
+    data['htAmsl'] = 0
+    return data
+
+
+def timestamp_from_file(filename, tz_offset=None):
     # An empty string will be returned if no valid timestamp found.
     timestamp = ""
     timestamp_pattern = r"\d{4}[:_-]\d{2}[:_-]\d{2}[Tt :_-]\d{2}[:_-]\d{2}"
@@ -193,7 +296,10 @@ def timestamp_from_file(filename):
         # Standardise timestamp format
         timestamp = re.sub(r"[Tt :_-]", r"_", timestamp)
         timestamp = datetime.strptime(timestamp, r"%Y_%m_%d_%H_%M")
-        timestamp = timestamp.strftime("%Y-%m-%d_%H-%M")
+        # Time zone offset
+        if tz_offset is not None:
+            tzo = tz_offset
+            timestamp = (timestamp - timedelta(hours=tzo))
 
     return timestamp
 
@@ -203,7 +309,7 @@ def rect2pol(x_coord, y_coord):
     bearing = np.degrees(np.arctan2(y_coord, x_coord))
     if bearing < 0:
         bearing += 360
-    return (distance, bearing)
+    return distance, bearing
 
 
 if __name__ == "__main__":

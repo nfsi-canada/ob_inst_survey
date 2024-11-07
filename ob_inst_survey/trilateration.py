@@ -9,6 +9,9 @@ from scipy.optimize import least_squares
 def trilateration(
     obsvns: pd.DataFrame,
     apriori_coord: pd.Series = pd.Series(dtype=float),
+    maxrange=1.6,
+    max_resid=3,
+    **kwargs
 ) -> tuple[pd.Series, pd.Series, pd.DataFrame]:
     log = logging.getLogger(__name__)
     log.setLevel(logging.DEBUG)
@@ -39,9 +42,9 @@ def trilateration(
     obsvns.loc[obsvns["range"] < 50, "outlier"] = True
     obsvns["residual"] = None
     if not apriori_coord.empty:
-        # If range is more than 1.6x water depth or less than the water depth
+        # If range is more than 1.6x (default, configurable) water depth or less than the water depth
         # then mark as an outlier and exclude from calculation.
-        upper_rng = -apriori_coord["htAmsl"] * 1.6
+        upper_rng = -apriori_coord["htAmsl"] * maxrange
         lower_rng = -apriori_coord["htAmsl"] - 100
         obsvns.loc[obsvns["range"] > upper_rng, "outlier"] = True
         obsvns.loc[obsvns["range"] < lower_rng, "outlier"] = True
@@ -73,19 +76,16 @@ def trilateration(
             apriori_coord["lonDec"], apriori_coord["latDec"], apriori_coord["htAmsl"]
         )
 
-    # Subtract mean coordinate value from all coordinates to minimuse floating
-    # point calculation errors.
+    # Subtract mean coordinate value from all coordinates to minimise floating point calculation errors.
     obsvns[["X", "Y", "Z"]] = obsvns[["X", "Y", "Z"]] - mean_crd
     coord_next_iter = apriori_coord[["X", "Y", "Z"]] - mean_crd
     while True:
-        # Extract datframes for computation. Exclude any observations marked
-        # as outliers.
+        # Extract dataframes for computation. Exclude any observations marked as outliers.
         used_obs_df = obsvns.loc[~obsvns["outlier"]]
 
         if len(used_obs_df.index) < 3:
             print(
-                "A minimum of three valid range observations are required to "
-                "compute a surveyed location."
+                "A minimum of three valid range observations are required to compute a surveyed location."
             )
             return (pd.DataFrame(dtype=object), apriori_coord, obsvns)
 
@@ -104,11 +104,10 @@ def trilateration(
         used_obs_df.loc[:, "residual"] = obsvns.loc[~obsvns["outlier"], "residual"]
         std_error = std_devn(used_obs_df["residual"])
 
-        # Exclude all observations for next itteration where
-        # residuals of ranges are > 3 std deviations.
-        obsvns.loc[obsvns["residual"].abs() >= std_error * 3, "outlier"] = True
+        # Exclude all observations for next iteration where residuals of ranges are >3 std deviations (default).
+        obsvns.loc[obsvns["residual"].abs() >= std_error * max_resid, "outlier"] = True
 
-        # If any new outliers were identified in current itteration then repeat.
+        # If any new outliers were identified in current iteration then repeat.
         if not (used_obs_df["residual"].abs() >= std_error * 3).any():
             break
 
@@ -131,7 +130,7 @@ def distance_3d(crd1, crd2):
     """Calculate 3D distance from two sets of X,Y,Z.
 
     Calculate a 3D distance where one parameter is a Pandas DF that contains
-    columns ["X", "Y", "Z"], and the other conatins values (X, Y, Z).
+    columns ["X", "Y", "Z"], and the other contains values (X, Y, Z).
     """
     crd_diff = crd2 - crd1
     return (crd_diff["X"] ** 2 + crd_diff["Y"] ** 2 + crd_diff["Z"] ** 2) ** 0.5

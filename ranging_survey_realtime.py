@@ -23,6 +23,7 @@ ACCOU_TURNTIME = 12.5  # millisec
 ACCOU_SPD = 1500  # m/sec
 
 
+# TODO: Add ability for real-time survey with NFSI log files (Discovery)
 def main():
     """Initialise NMEA and EdgeTech data streams and log to CSV text file."""
     # Default CLI arguments.
@@ -32,7 +33,7 @@ def main():
     # Retrieve CLI arguments.
     helpdesc: str = (
         "Receives an NMEA data stream via UDP or TCP, and a serial data stream "
-        "from an EdgeTech deckbox. As each new observation is receievd the surveyed "
+        "from an EdgeTech deckbox. As each new observation is received the surveyed "
         "coordinate will be recalculated by trilateration and a plot will be updated "
         "to both screen and file. Alternatively these streams can be simulated "
         "by replaying previously recorded text files (one containing NMEA data "
@@ -86,8 +87,7 @@ def main():
             etech_lines = etech_file.readlines()
         for sentence in etech_lines:
             try:
-                # Attempt to extract the timestamp from the beginning of first
-                # senetence of the file replay.
+                # Attempt to extract the timestamp from the beginning of first sentence of the file replay.
                 timestamp_pattern = (
                     r"^\d{4}[:_-]\d{2}[:_-]\d{2}[Tt :_-]"
                     r"\d{2}[:_-]\d{2}[:_-]\d{2}\.\d{0,6}"
@@ -195,8 +195,7 @@ def main():
             if apriori_coord.empty:
                 apriori_coord = apriori_returned
 
-            # Plot the result figure and update it any time a result coordinate
-            # is available.
+            # Plot the result figure and update it any time a result coordinate is available.
             if not final_coord.empty:
                 if not figure_displayed:
                     plt.ion()

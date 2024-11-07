@@ -175,7 +175,7 @@ def _get_ranging_dict(
 
     # If we are replaying from files then we need to have the timestamp from
     # the first NMEA record before starting Edgetech file replay to provide
-    # syncronisation.
+    # synchronisation.
     nmea_dict = _get_next_nmea_dict(nmea_q, nmeafile_log)
 
     # Start thread that will populate EdgeTech ranging queue
@@ -246,7 +246,7 @@ def _get_ranging_dict(
 
 
 def _get_next_edgetech_dict(edgetech_q: Queue, accou: dict, rangefile_log: Path):
-    """Get next element from queue and process as edgetech sentence."""
+    """Get next element from queue and process as Edgetech sentence."""
     range_dict = {}
     if edgetech_q.empty():
         return range_dict

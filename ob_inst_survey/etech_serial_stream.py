@@ -39,7 +39,7 @@ def __receive_serial(ser_conn: SerParam, edgetech_q: Queue[str, datetime]):
         bytesize=ser_conn.bytesize,
         timeout=ser_conn.timeout,
     ) as ser:
-        print(f"Connected to EgeTech deckbox: {ser.portstr} at {ser.baudrate} baud.")
+        print(f"Connected to EdgeTech deckbox: {ser.portstr} at {ser.baudrate} baud.")
 
         while True:
             response_line = _get_response(ser)

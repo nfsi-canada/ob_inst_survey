@@ -13,7 +13,10 @@ import warnings
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Run trilateration survey calculation for several stations, using "
                                                  "previously tabulated range measurements (e.g. CSV file).")
-    parser.add_argument('station_info', type=str, help="CSV or JSON file with CLI inputs for one or more surveys.")
+    parser.add_argument('station_info', type=str,
+                        help="CSV or JSON file with CLI inputs for one or more surveys. If CSV, column names must "
+                             "match valid CLI inputs for the ranging_survey_from_obsfile.py script, with a priori "
+                             "coordinates for inversion in columns 'startlat', 'startlon' and 'startdepth'.")
 
     args = parser.parse_args()
 

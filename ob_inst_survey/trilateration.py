@@ -28,7 +28,7 @@ def trilateration(
             "A minimum of three range observations are required to "
             "compute a surveyed location."
         )
-        return (pd.DataFrame(dtype=object), pd.DataFrame(dtype=object), obsvns)
+        return pd.Series(dtype=object), pd.Series(dtype=object), obsvns
 
     # Define transformations
     trans_geoctrc_to_geod = Transformer.from_crs(
@@ -87,7 +87,7 @@ def trilateration(
             print(
                 "A minimum of three valid range observations are required to compute a surveyed location."
             )
-            return (pd.DataFrame(dtype=object), apriori_coord, obsvns)
+            return pd.Series(dtype=object), apriori_coord, obsvns
 
         result = least_squares(
             rms_err,
@@ -123,7 +123,7 @@ def trilateration(
         final_crd["htAmsl"],
     ) = trans_geoctrc_to_geod.transform(xx=final_crd.X, yy=final_crd.Y, zz=final_crd.Z)
 
-    return (final_crd, apriori_coord, obsvns)
+    return final_crd, apriori_coord, obsvns
 
 
 def distance_3d(crd1, crd2):

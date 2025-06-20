@@ -16,7 +16,7 @@ def obsfile_parser():
     parser = ArgumentParser(add_help=False)
     parser.add_argument(
         "--obsfile",
-        help=("Full path and filename for input observations file location."),
+        help="Full path and filename for input observations file location.",
         type=Path,
     )
     return parser
@@ -77,7 +77,7 @@ def replay2files_parser(
     )
     infile_group.add_argument(
         "--replayspeed",
-        help=("Speed multiplier for replaying file. Default: 1"),
+        help="Speed multiplier for replaying file. Default: 1",
         default=1,
         type=float,
     )
@@ -90,7 +90,7 @@ def replayfile_parser(dflt_replayfile: Path = DFLT_INFILE):
     infile_group = parser.add_argument_group(title="Input File Parameters:")
     infile_group.add_argument(
         "--replayfile",
-        help=(f"Full path and filename for input file. Default: {dflt_replayfile}"),
+        help=f"Full path and filename for input file. Default: {dflt_replayfile}",
         default=dflt_replayfile,
         type=Path,
     )
@@ -107,7 +107,7 @@ def replayfile_parser(dflt_replayfile: Path = DFLT_INFILE):
     )
     infile_group.add_argument(
         "--replayspeed",
-        help=("Speed multiplier for replaying file. Default: 1"),
+        help="Speed multiplier for replaying file. Default: 1",
         default=1,
         type=float,
     )
@@ -119,7 +119,7 @@ def out_filepath_parser(dflt_filepath: Path = DFLT_PATH):
     parser = ArgumentParser(add_help=False)
     parser.add_argument(
         "--outfilepath",
-        help=(f"Full directory path for file location. Default: {dflt_filepath}"),
+        help=f"Full directory path for file location. Default: {dflt_filepath}",
         default=dflt_filepath,
         type=Path,
     )
@@ -175,7 +175,7 @@ def ip_arg_parser(nmea_conn: obsurv.IpParam):
     )
     ip_group.add_argument(
         "--ipprot",
-        help=f"Proticol for IP connection (TCP/UDP). Default: {nmea_conn.prot}",
+        help=f"Protocol for IP connection (TCP/UDP). Default: {nmea_conn.prot}",
         default=nmea_conn.prot,
     )
     ip_group.add_argument(
@@ -276,7 +276,7 @@ def file_split_parser():
         "--filesplit",
         help=(
             "Specify an integer number of hours for splitting output files. "
-            "For example 24 will spilt files daily at 0000 hours. "
+            "For example 24 will split files daily at 0000 hours. "
             "If not specified or zero, then output file will be continuous."
         ),
         default=None,
@@ -298,7 +298,7 @@ def timestamp_type(timestamp: str) -> datetime:
         raise ArgumentTypeError(msg) from exc
 
 
-def coord_type(ordinate: str) -> int:
+def coord_type(ordinate: str) -> float:
     """Argparse type for Lat/Lon as [+-]ddd.dddd[NSEW] or ddd_mm.mmm[NSEW]."""
     try:
         ord_match = re.search(

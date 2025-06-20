@@ -28,7 +28,9 @@ def main():
         "'range','lonDec', 'latDec', 'htAmsl'. \n"
         "If an optional start/deployed coordinate is not specified then a mean of "
         "all observation coordinates and depth of 1000m will be used as a start "
-        "location"
+        "location. \n\n"
+        "Alternatively, the input file may be a log file created by the OBS Locator widget of Guralp's Discovery "
+        "software. No modifications should be made to files of this format prior to use by the code."
     )
     parser = ArgumentParser(
         parents=[
@@ -62,7 +64,11 @@ def main():
     if timestamp_start:
         outfile_name = '{0}_{1}'.format(args.outfileprefix, timestamp_start.strftime('%Y-%m-%d_%H-%M'))
     rsltfile_name = outfile_path / f"{outfile_name}_RESULT.csv"
-    obsvn_out_filename = outfile_path / f"{obsvn_in_filename.stem}_OUT.csv"
+    if args.outfileprefix in obsvn_in_filename.stem:
+        obsvn_out_filename = outfile_path / f"{obsvn_in_filename.stem}_OUT.csv"
+    else:
+        # Include station name in output CSV file, if not present
+        obsvn_out_filename = outfile_path / '{0}_{1}_OUT.csv'.format(obsvn_in_filename.stem, args.outfileprefix)
 
     # Organize other arguments
     calc_kwargs = {}
@@ -169,7 +175,6 @@ def main():
         **plot_kwargs
     )
 
-    # TODO: When using Discovery logs, include station/timestamp info in output filename
     all_obs_df.to_csv(obsvn_out_filename, index=False)
 
     if not args.hidefig:

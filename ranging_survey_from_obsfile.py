@@ -248,7 +248,7 @@ def read_obs_locator_log(filename):
     f = open(filename)
     range_data = []
     for line in f.readlines():
-        if line[0] == '#' or line[0] == 'A':
+        if (line[0] == '#') or (line[0] == 'A') or (not line.strip()):
             continue
 
         parts = re.split(r',|\s', line.strip())

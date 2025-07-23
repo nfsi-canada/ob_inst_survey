@@ -243,18 +243,12 @@ def read_obs_locator_log(filename):
     import re
 
     formats = [int, 'date', 'time', float, float, int, float, float, float]
+    head = ['address', 'date', 'time', 'lat', 'lon', 'tat', 'range', 'depth', 'sos', 'datetime']
 
     f = open(filename)
-    head = None
-    while head is None:
-        temp = f.readline()
-        if temp[0] != '#' and temp.strip():
-            head = re.split(r',|\s', temp.strip().lower())
-    head.append('datetime')
-
     range_data = []
     for line in f.readlines():
-        if line[0] == '#':
+        if (line[0] == '#') or (line[0] == 'A') or (not line.strip()):
             continue
 
         parts = re.split(r',|\s', line.strip())

@@ -243,24 +243,12 @@ def read_obs_locator_log(filename):
     import re
 
     formats = [int, 'date', 'time', float, float, int, float, float, float]
+    head = ['address', 'date', 'time', 'lat', 'lon', 'tat', 'range', 'depth', 'sos', 'datetime']
 
     f = open(filename)
-    # TODO: Some versions of Discovery have '#' symbol at start of header line while others don't
-    head = None
-    while head is None:
-        temp = f.readline()
-        if temp[0] == '#':
-            temp = temp[1:]
-        if temp.strip():
-            parts = re.split(r',|\s', temp.strip().lower())
-            if (parts[0] == 'address') and (len(parts) <= len(formats)):
-                # First field of range data is always modem address, should have same number of fields as list of value formats
-                head = parts[:]
-    head.append('datetime')
-
     range_data = []
     for line in f.readlines():
-        if line[0] == '#':
+        if line[0] == '#' or line[0] == 'A':
             continue
 
         parts = re.split(r',|\s', line.strip())
